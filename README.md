@@ -7,7 +7,7 @@ First, we create two JSON files: `components.json` will contain the definition o
 
 In this example, we'll replicate the following form:
 
-![(Text) Sign up!, (Text input) Your name, (Text input) Your email address, (Check box) I agree with the Terms and conditions, (Button) Next](https://i.imgur.com/qpW9qkV.png)
+<img src="http://i.imgur.com/qpW9qkV.png" alt="(Text) Sign up!, (Text input) Your name, (Text input) Your email address, (Check box) I agree with the Terms and conditions, (Button) Next" width="740" height="788"/>
 
 Our `components.json` file should look like this:
 
