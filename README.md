@@ -90,13 +90,13 @@ If a field is defined by simple typing, the string must be the name of one of th
   "__version": 0,
 
   "image": {
-    "url": "string"     // Primitive type
-  }
+    "url": "string" // Primitive type
+  },
 
   "button": {
-    "text": "string",   // Primitive type
-    "icon": "image"     // Reference to previous component
-  },
+    "text": "string", // Primitive type
+    "icon": "image" // Reference to previous component
+  }
 }
 ```
 
@@ -110,15 +110,15 @@ Examples of definition by advanced typing:
 
   "image": {
     "url": "string"
-  }
+  },
 
   "button": {
     // Advanced typing
     "text": {
-        "__type": "string",
-        "__default": "Ok"
+      "__type": "string",
+      "__default": "Ok"
     }
-  },
+  }
 }
 ```
 
@@ -131,26 +131,26 @@ Components can also have an `__abstract` key with a boolean value, which represe
   "__version": 0,
 
   "disableableComponent": {
-    "__abstract": true,     // This is an abstract component, therefore it cannot be directly implemented
+    "__abstract": true, // This is an abstract component, therefore it cannot be directly implemented
     "disabled": "bool"
-  }
+  },
 
   "button": {
-    "__inherit": "disableableComponent",     // The "button" component inherits the fields from the previous component
+    "__inherit": "disableableComponent", // The "button" component inherits the fields from the previous component
     "text": "string",
     "color": {
-        "__type": "string",
-        "__default": "#fff"
+      "__type": "string",
+      "__default": "#fff"
     }
   },
 
   "submitButton": {
     "__inherit": "button",
     "color": {
-        "__type": "string",
-        "__default": "#00ff00"  // This "button" variant overrides the "color" field to change its default value
+      "__type": "string",
+      "__default": "#00ff00" // This "button" variant overrides the "color" field to change its default value
     }
-  },
+  }
 }
 ```
 
@@ -178,15 +178,15 @@ The structure of a form is an object whose keys are the names of the component i
 
   "label": {
     "text": "string"
-  }
+  },
 
   "button": {
     "text": "string",
     "enabled": {
-        "__type": "bool",
-        "__default": true
+      "__type": "bool",
+      "__default": true
     }
-  },
+  }
 }
 ```
 
