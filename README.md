@@ -11,7 +11,7 @@ In this example, we'll replicate the following form:
 
 Our `components.json` file should look like this:
 
-```json
+```jsonc
 {
   "__version": 0,
 
@@ -38,7 +38,7 @@ Our `components.json` file should look like this:
 
 As you can see, we have successfully defined the field types that we'll use on our form. Now, to the `forms.json`file:
 
-```json
+```jsonc
 {
   "__version": 0,
 
@@ -72,7 +72,7 @@ As you can see, we have successfully defined the field types that we'll use on o
 
 Components should be defined on a JSON file. This file has to be an object with the `__version` key defined. Its value should be an integer, which represents the Components Definition File version. The rest of the keys of the root object should be the names of the components, with their values being the components structure. Example:
 
-```json
+```jsonc
 {
     "__version": 0,
 
@@ -85,7 +85,7 @@ The structure of a component is an object whose keys are the names of the fields
 
 If a field is defined by simple typing, the string must be the name of one of the primitive types (`string`, `number`, and `bool`). Example:
 
-```json
+```jsonc
 {
   "__version": 0,
 
@@ -104,7 +104,7 @@ If you want to define a default value for that field, for example, you could use
 
 Examples of definition by advanced typing:
 
-```json
+```jsonc
 {
   "__version": 0,
 
@@ -122,11 +122,11 @@ Examples of definition by advanced typing:
 }
 ```
 
-You can use components inheritance to create variations of a given component. Just add the `__import` key, whose value is a string: the name of the component that you want to import the fields from. Defining a field that already exists on imported component will override it.
+You can use components inheritance to create variations of a given component. Just add the `__inherit` key, whose value is a string: the name of the component that you want to inherit the fields from. Defining a field that already exists on the inherited component will override it.
 
 Components can also have an `__abstract` key with a boolean value, which represents if that component is meant to only serve as a template for others, and cannot be directly implemented on forms. Example:
 
-```json
+```jsonc
 {
   "__version": 0,
 
@@ -136,7 +136,7 @@ Components can also have an `__abstract` key with a boolean value, which represe
   }
 
   "button": {
-    "__import": "disableableComponent",     // The "button" component imports the fields from the previous component
+    "__inherit": "disableableComponent",     // The "button" component inherits the fields from the previous component
     "text": "string",
     "color": {
         "__type": "string",
@@ -145,7 +145,7 @@ Components can also have an `__abstract` key with a boolean value, which represe
   },
 
   "submitButton": {
-    "__import": "button",
+    "__inherit": "button",
     "color": {
         "__type": "string",
         "__default": "#00ff00"  // This "button" variant overrides the "color" field to change its default value
@@ -160,7 +160,7 @@ Components can also have an `__abstract` key with a boolean value, which represe
 
 Forms should be defined on a JSON file. This file has to be an object with the `__version` key defined. Its value should be an integer, which represents the Components Definition File version. The rest of the keys of the root object should be the names of the forms, with their values being the forms structure. Example:
 
-```json
+```jsonc
 {
     "__version": 0,
 
@@ -171,7 +171,7 @@ Forms should be defined on a JSON file. This file has to be an object with the `
 
 The structure of a form is an object whose keys are the names of the component instances that the form will contain. They should be JSON objects with a `__type` key defined, whose value should be the name of the component that will be instanced. The rest of the keys inside of the instance should be names of the fields of that component, followed by their values. You should specify the value of every field present on the component definition, except by fields with default value, which are optional. Example:
 
-```json
+```jsonc
 // components.json
 {
   "__version": 0,
@@ -190,7 +190,7 @@ The structure of a form is an object whose keys are the names of the component i
 }
 ```
 
-```json
+```jsonc
 // forms.json
 {
   "__version": 0,
