@@ -16,7 +16,7 @@ type InputType uint8
 type Rule struct {
 	Action string
 	Param  string
-	Fields map[string]interface{}
+	Fields map[interface{}]interface{}
 }
 
 type Field struct {
@@ -58,22 +58,21 @@ func LoadForm(name string) (form *Form, errs FormErrors) {
 	for k, v := range form.Items {
 		if ty, ok := v["_item"]; ok {
 			if _, ok := ty.(string); !ok {
-				errs = append(errs, errors.New("item "+k+" has a \"_item\" field that is not a string"))
+				errs = append(errs, errors.New("item \""+k+"\" has a \"_item\" field that is not a string"))
 				continue
 			}
 		} else {
-			errs = append(errs, errors.New("item "+k+" has a \"_item\" field that is not a string"))
+			errs = append(errs, errors.New("item \""+k+"\" has a \"_item\" field that is not a string"))
 			continue
 		}
 
 		ty, ok := v["_type"]
 		if !ok {
-			errs = append(errs, errors.New("item "+k+" has no \"_type\" field"))
 			continue
 		}
 
 		if _, ok := ty.(string); !ok {
-			errs = append(errs, errors.New("item "+k+" has an \"_type\" field that is not a string"))
+			errs = append(errs, errors.New("item \""+k+"\" has an \"_type\" field that is not a string"))
 			continue
 		}
 		if ty == "action" {
@@ -83,70 +82,78 @@ func LoadForm(name string) (form *Form, errs FormErrors) {
 			case "none":
 			case "bool", "number", "string", "object", "array":
 				if rules, ok := v["_rules"]; ok {
-					if tyRules := reflect.ValueOf(rules); tyRules.Kind() == reflect.Slice {
-						form.Fields[k] = Field{
-							Type:  ty.(string),
-							Rules: []Rule{},
+					if tyRules := reflect.ValueOf(rules); tyRules.Kind() != reflect.Slice {
+						errs = append(errs, errors.New("item \""+k+"\" has a \"_rules\" field that is not a list"))
+						continue
+					}
+
+					form.Fields[k] = Field{
+						Type:  ty.(string),
+						Rules: []Rule{},
+					}
+
+					for i, rule := range rules.([]interface{}) {
+						rule, ok := rule.(map[interface{}]interface{})
+						if !ok {
+							errs = append(errs, errors.New("item \""+k+"\" has a rule ("+fmt.Sprint(i)+") that is not an object"))
+							continue
 						}
-						for i, r := range rules.([]interface{}) {
-							if rule, ok := r.(map[string]interface{}); ok {
-								isInvalid := false
 
-								action, ok := rule["_action"]
-								if !ok {
-									errs = append(errs, errors.New("item "+k+" has a rule ("+fmt.Sprint(i)+") that has no \"_action\" field"))
-									isInvalid = true
-								} else if _, ok := action.(string); !ok {
-									errs = append(errs, errors.New("item "+k+" has a rule ("+fmt.Sprint(i)+") whose \"_action\" field is not a string"))
-									isInvalid = true
-								} else {
-									delete(rule, "_action")
-								}
+						isInvalid := false
 
-								param, ok := rule["_param"]
-								if !ok {
-									errs = append(errs, errors.New("item "+k+" has a rule ("+fmt.Sprint(i)+") that has no \"_param\" field"))
-									isInvalid = true
-								} else if _, ok := param.(string); !ok {
-									errs = append(errs, errors.New("item "+k+" has a rule ("+fmt.Sprint(i)+") whose \"_param\" field is not a string"))
-									isInvalid = true
-								} else {
-									delete(rule, "_param")
-								}
+						action, ok := rule["_action"]
+						if !ok {
+							errs = append(errs, errors.New("item \""+k+"\" has a rule ("+fmt.Sprint(i)+") that has no \"_action\" field"))
+							isInvalid = true
+						} else if _, ok := action.(string); !ok {
+							errs = append(errs, errors.New("item \""+k+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" field is not a string"))
+							isInvalid = true
+						} else {
+							delete(rule, "_action")
+						}
 
-								if isInvalid {
-									continue
-								}
+						param, ok := rule["_param"]
+						if !ok {
+							errs = append(errs, errors.New("item \""+k+"\" has a rule ("+fmt.Sprint(i)+") that has no \"_param\" field"))
+							isInvalid = true
+						} else if _, ok := param.(string); !ok {
+							errs = append(errs, errors.New("item \""+k+"\" has a rule ("+fmt.Sprint(i)+") whose \"_param\" field is not a string"))
+							isInvalid = true
+						} else {
+							delete(rule, "_param")
+						}
 
-								switch action {
-								case "==", "!=", "<", "<=", ">", ">=":
-								case "regex":
-									_, err := regexp.Compile(param.(string))
-									if err != nil {
-										errs = append(errs, errors.New("item "+k+" has a rule ("+fmt.Sprint(i)+") whose \"_action\" is \"regex\" but its \"_param\" is not a valid regex"))
-										continue
-									}
-								default:
-									errs = append(errs, errors.New("item "+k+" has a rule ("+fmt.Sprint(i)+") has an unknown \"_action\": "+action.(string)))
-									continue
-								}
+						if isInvalid {
+							continue
+						}
 
-							} else {
-								errs = append(errs, errors.New("item "+k+" has a rule ("+fmt.Sprint(i)+") that is not an object"))
+						switch action {
+						case "==", "!=", "<", "<=", ">", ">=":
+						case "regex":
+							_, err := regexp.Compile(param.(string))
+							if err != nil {
+								fmt.Println(err)
+								errs = append(errs, errors.New("item \""+k+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" is \"regex\" but its \"_param\" is not a valid regex"))
+								continue
 							}
+						default:
+							errs = append(errs, errors.New("item \""+k+"\" has a rule ("+fmt.Sprint(i)+") has an unknown \"_action\": "+action.(string)))
+							continue
 						}
-					} else {
-						errs = append(errs, errors.New("item "+k+" has a \"_rules\" field that is not a list"))
+
+						field := form.Fields[k]
+						field.Rules = append(form.Fields[k].Rules, Rule{Action: action.(string), Param: param.(string), Fields: rule})
+						form.Fields[k] = field
 					}
 				}
 			default:
-				errs = append(errs, errors.New("item "+k+" has an unknown \"_type\": "+ty.(string)))
+				errs = append(errs, errors.New("item \""+k+"\" has an unknown \"_type\": "+ty.(string)))
 			}
 		}
 
 	}
 
-	return form, nil
+	return
 }
 
 type ResponseErrors []error
@@ -199,7 +206,7 @@ func ValidateResponse(response map[string]interface{}, form *Form) ResponseError
 }
 
 func main() {
-	form, _ := LoadForm("sign-up")
+	form, errs := LoadForm("sign-up")
 	m := map[string]interface{}{
 		"name":      "1",
 		"test":      map[string]interface{}{"2": "a"},
@@ -207,11 +214,12 @@ func main() {
 		"email":     "eaemen",
 		"password1": "asd",
 	}
-	SanitizeResponse(&m, form)
-	errs := ValidateResponse(m, form)
 	if len(errs) != 0 {
 		fmt.Println(errs.Error())
-	} else {
-		fmt.Println(m)
+	}
+	SanitizeResponse(&m, form)
+	errs1 := ValidateResponse(m, form)
+	if len(errs1) != 0 {
+		fmt.Println(errs1.Error())
 	}
 }

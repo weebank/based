@@ -23,7 +23,7 @@ password1:
   _type: string
   _rules:
     - _action: regex
-      _param: ^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$ %^&*-]).{8,}$
+      _param: ^[A-Z]+\w*(\s\w+)*$
       invalidMsg: invalidPassword
   text: yourPassword
   hidden: true
