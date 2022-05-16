@@ -89,13 +89,9 @@ If a field is defined by simple typing, the string must be the name of one of th
 {
   "__version": 0,
 
-  "image": {
-    "url": "string" // Primitive type
-  },
-
   "button": {
     "text": "string", // Primitive type
-    "icon": "image" // Reference to previous component
+    "url": "string" // Reference to previous component
   }
 }
 ```
@@ -107,10 +103,6 @@ Examples of definition by advanced typing:
 ```jsonc
 {
   "__version": 0,
-
-  "image": {
-    "url": "string"
-  },
 
   "button": {
     // Advanced typing

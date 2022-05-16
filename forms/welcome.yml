@@ -1,0 +1,8 @@
+# v1
+title:
+  _type: title
+  text: welcomeMessage
+button:
+  _type: button
+  _input: action
+  text: continue
