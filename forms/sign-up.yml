@@ -39,7 +39,3 @@ button:
   _item: button
   _type: action
   text: next
-test:
-  _item: textbox
-  _type: object
-  text: next

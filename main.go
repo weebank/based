@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -14,21 +15,26 @@ import (
 type InputType uint8
 
 type Rule struct {
-	Action string
-	Param  string
-	Fields map[interface{}]interface{}
+	Action string                 `json:"action"`
+	Param  string                 `json:"param"`
+	Props  map[string]interface{} `json:"props,omitempty"`
 }
 
 type Field struct {
-	Type  string
-	Rules []Rule
+	Type  string  `json:"type"`
+	Rules *[]Rule `json:"rules"`
+}
+
+type Item struct {
+	Item  string                 `json:"item"`
+	Props map[string]interface{} `json:"props,omitempty"`
 }
 
 type Form struct {
-	Name    string
-	Items   map[string]map[string]interface{}
-	Actions []string
-	Fields  map[string]Field
+	Name    string           `json:"name"`
+	Actions []string         `json:"actions"`
+	Fields  map[string]Field `json:"fields"`
+	Layout  map[string]Item  `json:"layout"`
 }
 
 type FormErrors []error
@@ -48,35 +54,39 @@ func LoadForm(name string) (form *Form, errs FormErrors) {
 		return
 	}
 
-	form = &Form{Name: name, Items: map[string]map[string]interface{}{}, Actions: []string{}, Fields: map[string]Field{}}
-	err = yaml.Unmarshal(file, &(form.Items))
+	raw := map[string]map[string]interface{}{}
+	err = yaml.Unmarshal(file, &raw)
 	if err != nil {
 		errs = append(errs, err)
 		return
 	}
 
-	for k, v := range form.Items {
-		if ty, ok := v["_item"]; ok {
-			if _, ok := ty.(string); !ok {
-				errs = append(errs, errors.New("item \""+k+"\" has a \"_item\" field that is not a string"))
-				continue
-			}
-		} else {
-			errs = append(errs, errors.New("item \""+k+"\" has a \"_item\" field that is not a string"))
+	form = &Form{Name: name, Actions: []string{}, Fields: map[string]Field{}, Layout: map[string]Item{}}
+
+	for k, v := range raw {
+		item := Item{Props: map[string]interface{}{}}
+
+		it, ok := v["_item"]
+		if !ok {
+			errs = append(errs, errors.New("item \""+k+"\" has no \"_item\" field"))
 			continue
 		}
+		if _, ok := it.(string); !ok {
+			errs = append(errs, errors.New("item \""+k+"\" has an \"_item\" field that is not a string"))
+		}
+		item.Item = it.(string)
 
 		ty, ok := v["_type"]
 		if !ok {
 			continue
 		}
-
 		if _, ok := ty.(string); !ok {
-			errs = append(errs, errors.New("item \""+k+"\" has an \"_type\" field that is not a string"))
+			errs = append(errs, errors.New("item \""+k+"\" has a \"_type\" field that is not a string"))
 			continue
 		}
+
 		if ty == "action" {
-			form.Actions = append(form.Actions, ty.(string))
+			form.Actions = append(form.Actions, k)
 		} else {
 			switch ty {
 			case "none":
@@ -89,7 +99,7 @@ func LoadForm(name string) (form *Form, errs FormErrors) {
 
 					form.Fields[k] = Field{
 						Type:  ty.(string),
-						Rules: []Rule{},
+						Rules: &[]Rule{},
 					}
 
 					for i, rule := range rules.([]interface{}) {
@@ -108,8 +118,6 @@ func LoadForm(name string) (form *Form, errs FormErrors) {
 						} else if _, ok := action.(string); !ok {
 							errs = append(errs, errors.New("item \""+k+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" field is not a string"))
 							isInvalid = true
-						} else {
-							delete(rule, "_action")
 						}
 
 						param, ok := rule["_param"]
@@ -119,8 +127,6 @@ func LoadForm(name string) (form *Form, errs FormErrors) {
 						} else if _, ok := param.(string); !ok {
 							errs = append(errs, errors.New("item \""+k+"\" has a rule ("+fmt.Sprint(i)+") whose \"_param\" field is not a string"))
 							isInvalid = true
-						} else {
-							delete(rule, "_param")
 						}
 
 						if isInvalid {
@@ -141,8 +147,19 @@ func LoadForm(name string) (form *Form, errs FormErrors) {
 							continue
 						}
 
+						r := Rule{Action: action.(string), Param: param.(string), Props: map[string]interface{}{}}
+						for k, v := range rule {
+							key, ok := k.(string)
+							if !ok {
+								continue
+							}
+							if !strings.HasPrefix(key, "_") {
+								r.Props[key] = v
+							}
+						}
+
 						field := form.Fields[k]
-						field.Rules = append(form.Fields[k].Rules, Rule{Action: action.(string), Param: param.(string), Fields: rule})
+						*field.Rules = append(*(form.Fields[k].Rules), r)
 						form.Fields[k] = field
 					}
 				}
@@ -151,6 +168,13 @@ func LoadForm(name string) (form *Form, errs FormErrors) {
 			}
 		}
 
+		for k, p := range v {
+			if !strings.HasPrefix(k, "_") {
+				item.Props[k] = p
+			}
+		}
+
+		form.Layout[k] = item
 	}
 
 	return
@@ -168,7 +192,7 @@ func (re ResponseErrors) Error() (s string) {
 
 func SanitizeResponse(response *map[string]interface{}, form *Form) {
 	for k := range *response {
-		if _, ok := form.Items[k]; !ok {
+		if _, ok := form.Fields[k]; !ok {
 			delete(*response, k)
 		}
 	}
@@ -222,4 +246,7 @@ func main() {
 	if len(errs1) != 0 {
 		fmt.Println(errs1.Error())
 	}
+
+	j, _ := json.MarshalIndent(*form, "", "    ")
+	fmt.Println(string(j))
 }
