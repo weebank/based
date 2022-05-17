@@ -4,7 +4,7 @@ title:
   text: signUp
 name:
   _item: textbox
-  _type: string
+  _type: field
   _rules:
     - _action: regex
       _param: ^[A-Z]+\w*(\s\w+)*$
@@ -12,7 +12,7 @@ name:
   text: yourFullName
 email:
   _item: textbox
-  _type: string
+  _type: field
   _rules:
     - _action: regex
       _param: ^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$
@@ -20,7 +20,7 @@ email:
   text: signUp
 password1:
   _item: textbox
-  _type: string
+  _type: field
   _rules:
     - _action: regex
       _param: ^[A-Z]+\w*(\s\w+)*$
@@ -35,7 +35,7 @@ password2:
       invalidMsg: passwordsDontMatch
   text: repeatYourPassword
   hidden: true
-button:
+confirm:
   _item: button
   _type: action
   text: next
