@@ -21,7 +21,14 @@ func (re ResponseErrors) Error() (s string) {
 
 func SanitizeResponse(response *map[string]string, form *Form) {
 	for k := range *response {
-		if _, ok := form.Fields[k]; !ok {
+		var isValid bool
+		for _, f := range form.Fields {
+			if k == f {
+				isValid = true
+			}
+		}
+
+		if !isValid {
 			delete(*response, k)
 		}
 	}
@@ -29,26 +36,30 @@ func SanitizeResponse(response *map[string]string, form *Form) {
 
 func ValidateResponse(response map[string]string, form *Form) ResponseErrors {
 	errs := ResponseErrors{}
-	for k, v := range form.Fields {
-		r, ok := response[k]
+	for _, f := range form.Fields {
+		_, ok := response[f]
 		if !ok {
-			errs = append(errs, errors.New(k+" has no matching response field"))
+			errs = append(errs, errors.New(f+" has no matching response field"))
 			continue
 		}
+	}
 
-		for i, v := range v.Rules {
-			var matchesRule bool
-			switch v.Action {
-			case "==":
-				matchesRule = response[v.Param] == r
-			case "!=":
-				matchesRule = response[v.Param] != r
-			case "regex":
-				reg := regexp.MustCompile(v.Param)
-				matchesRule = reg.Match([]byte(r))
-			}
-			if !matchesRule {
-				errs = append(errs, errors.New(k+" does not match rule "+fmt.Sprint(i)))
+	for _, l := range form.Layout {
+		if res, ok := response[l.ID]; ok {
+			for i, r := range l.Rules {
+				var matchesRule bool
+				switch r.Action {
+				case "==":
+					matchesRule = response[r.Param] == res
+				case "!=":
+					matchesRule = response[r.Param] != res
+				case "regex":
+					reg := regexp.MustCompile(r.Param)
+					matchesRule = reg.Match([]byte(res))
+				}
+				if !matchesRule {
+					errs = append(errs, errors.New(l.ID+" does not match rule "+fmt.Sprint(i)))
+				}
 			}
 		}
 	}
@@ -61,7 +72,7 @@ func main() {
 		arg = os.Args[1]
 	}
 
-	form, errs := LoadForm("sign-up")
+	form, errs := CompileForm("forms/sign-up.yml")
 	m := map[string]string{}
 	json.Unmarshal(
 		[]byte(arg), &m,
@@ -75,4 +86,7 @@ func main() {
 	if len(errs1) > 0 {
 		fmt.Println(errs1.Error())
 	}
+
+	b, _ := json.MarshalIndent(form, "", "    ")
+	fmt.Println(string(b))
 }

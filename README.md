@@ -3,199 +3,132 @@
 ## Getting started
 
 Let's set up a simple dynamic form example.
-First, we create two JSON files: `components.json` will contain the definition of components that we'll use on our forms, and `forms.json` will contain the forms that will be populated by the components.
+First, create the YAML file that will contain the form components and layout. We'll replicate the following example:
 
-In this example, we'll replicate the following form:
+![(Text) Sign up!, (Text input) Your name, (Text input) Your email address, (Check box) I agree with the Terms and conditions, (Button) Next](/readme_example.png?raw=true)
 
-![(Text) Sign up!, (Text input) Your name, (Text input) Your email address, (Check box) I agree with the Terms and conditions, (Button) Next](https://i.imgur.com/c03EzLS.png)
+Our `sign-up.yml` file should look like this:
 
-Our `components.json` file should look like this:
-
-```jsonc
-{
-  "__version": 0,
-
-  "title": {
-    "text": "string"
-  },
-  "textbox": {
-    "text": "string",
-    "hint": "string"
-  },
-  "checkbox": {
-    "text": "string",
-    "required": "bool"
-  },
-  "button": {
-    "text": "string",
-    "enabled": {
-      "__type": "bool",
-      "__default": true
-    }
-  }
-}
+```yml
+_version: 1
+title:
+  _item: title
+  text: signUp
+name:
+  _item: textbox
+  _type: field
+  _rules:
+    - _action: regex
+      _param: ^[A-Z]+\w*(\s\w+)*$
+      invalidMsg: invalidFullName
+  text: yourFullName
+email:
+  _item: textbox
+  _type: field
+  _rules:
+    - _action: regex
+      _param: ^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$
+      invalidMsg: invalidEmail
+  text: signUp
+password1:
+  _item: textbox
+  _type: field
+  _rules:
+    - _action: regex
+      _param: ^[A-Z]+\w*(\s\w+)*$
+      invalidMsg: invalidPassword
+  text: yourPassword
+  hidden: true
+password2:
+  _item: textbox
+  _rules:
+    - _action: ==
+      _param: password1
+      invalidMsg: passwordsDontMatch
+  text: repeatYourPassword
+  hidden: true
+confirm:
+  _item: button
+  _type: action
+  text: next
 ```
 
-As you can see, we have successfully defined the field types that we'll use on our form. Now, to the `forms.json`file:
+Here are some rules to follow when writing YAML files for your forms:
 
-```jsonc
+- The name of the file indicates the ID of the form;
+- Each item has a key that indicates its own ID;
+- **based** allows you to insert custom keys anywhere (such as `invalidMsg` and `text` from the example above). They will be forwarded to the compiled version of the form;
+- It is a good practice to, rather than type the literal text that the form should display to the user, implement a string localization system on the front end and use the string IDs instead;
+- The keys that start with an underscore (such as `_item`) are reserved and will not be forwarded to the compiled form;
+- `_item` indicates the component the front end must render for this item;
+- `_type` can have 3 values: `none` (default if ommited), `field` (that indicates the front end should send data through this item), and `action` (that indicates the front end is able to perform an action through this item, such as confirming or canceling some process);
+- `_rules` is a list of rules that the value of the field must follow. If the current item has rules but is not a field, then they will not be validated by **based** (in those cases, it's assumed that the front end is responsible for those validations);
+- A rule has an `_action` (that can be `==` for equality, `!=` for inequality, and `regex`, for regular expressions) and a `_param` (that, in case of equality/inequality operations, indicates which item ID to be compared to; and in case of a regex operation, the regular expression it should be matched to).
+
+Once compiled, the form's DTO will look like this:
+
+```json
 {
-  "__version": 0,
-
-  "signUp": {
-    "signUpTitle": {
-      "__type": "title",
-      "text": "Sign Up!"
+  "name": "sign-up",
+  "actions": ["confirm"],
+  "fields": ["name", "email", "password1"],
+  "layout": [
+    {
+      "id": "name",
+      "item": "textbox",
+      "props": {
+        "text": "yourFullName"
+      },
+      "rules": [
+        {
+          "action": "regex",
+          "param": "^[A-Z]+\\w*(\\s\\w+)*$",
+          "props": {
+            "invalidMsg": "invalidFullName"
+          }
+        }
+      ]
     },
-    "nameInput": {
-      "__type": "textbox",
-      "hint": "Your Name"
+    {
+      "id": "email",
+      "item": "textbox",
+      "props": {
+        "text": "signUp"
+      },
+      "rules": [
+        {
+          "action": "regex",
+          "param": "^\\w+([\\.-]?\\w+)*@\\w+([\\.-]?\\w+)*(\\.\\w{2,3})+$",
+          "props": {
+            "invalidMsg": "invalidEmail"
+          }
+        }
+      ]
     },
-    "emailInput": {
-      "__type": "textbox",
-      "hint": "Your Email"
+    {
+      "id": "password1",
+      "item": "textbox",
+      "props": {
+        "hidden": true,
+        "text": "yourPassword"
+      },
+      "rules": [
+        {
+          "action": "regex",
+          "param": "^[A-Z]+\\w*(\\s\\w+)*$",
+          "props": {
+            "invalidMsg": "invalidPassword"
+          }
+        }
+      ]
     },
-    "termsCheckbox": {
-      "__type": "checkbox",
-      "text": "I agree with the Terms and conditions",
-      "required": true
-    },
-    "nextButton": {
-      "__type": "button",
-      "text": "Next"
+    {
+      "id": "confirm",
+      "item": "button",
+      "props": {
+        "text": "next"
+      }
     }
-  }
-}
-```
-
-## Components Definition File Guide
-
-Components should be defined on a JSON file. This file has to be an object with the `__version` key defined. Its value should be an integer, which represents the Components Definition File version. The rest of the keys of the root object should be the names of the components, with their values being the components structure. Example:
-
-```jsonc
-{
-    "__version": 0,
-
-    "myTextBox": {...},
-    "myButton": {...}
-}
-```
-
-The structure of a component is an object whose keys are the names of the fields of that component. Their values can be a string, for simple typing, or an object, for advanced typing.
-
-If a field is defined by simple typing, the string must be the name of one of the primitive types (`string`, `number`, and `bool`). Example:
-
-```jsonc
-{
-  "__version": 0,
-
-  "button": {
-    "text": "string", // Primitive type
-    "url": "string" // Reference to previous component
-  }
-}
-```
-
-If you want to define a default value for that field, for example, you could use advanced typing. In that case, the value must be an object with the `__type` key defined, and its value should be a string with the name of a primitive type (`string`, `number`, or `bool`). Then, you could specify a `__default` key on that object with the desired value.
-
-Examples of definition by advanced typing:
-
-```jsonc
-{
-  "__version": 0,
-
-  "button": {
-    // Advanced typing
-    "text": {
-      "__type": "string",
-      "__default": "Ok"
-    }
-  }
-}
-```
-
-You can use components inheritance to create variations of a given component. Just add the `__inherit` key, whose value is a string: the name of the component that you want to inherit the fields from. Defining a field that already exists on the inherited component will override it.
-
-Components can also have an `__abstract` key with a boolean value, which represents if that component is meant to only serve as a template for others, and cannot be directly implemented on forms. Example:
-
-```jsonc
-{
-  "__version": 0,
-
-  "disableableComponent": {
-    "__abstract": true, // This is an abstract component, therefore it cannot be directly implemented
-    "disabled": "bool"
-  },
-
-  "button": {
-    "__inherit": "disableableComponent", // The "button" component inherits the fields from the previous component
-    "text": "string",
-    "color": {
-      "__type": "string",
-      "__default": "#fff"
-    }
-  },
-
-  "submitButton": {
-    "__inherit": "button",
-    "color": {
-      "__type": "string",
-      "__default": "#00ff00" // This "button" variant overrides the "color" field to change its default value
-    }
-  }
-}
-```
-
-> The order of the definition of components matter. That means you can only reference a component _after_ it is defined on this file.
-
-## Forms Definition File Guide
-
-Forms should be defined on a JSON file. This file has to be an object with the `__version` key defined. Its value should be an integer, which represents the Components Definition File version. The rest of the keys of the root object should be the names of the forms, with their values being the forms structure. Example:
-
-```jsonc
-{
-    "__version": 0,
-
-    "signUpForm": {...},
-    "logInForm": {...}
-}
-```
-
-The structure of a form is an object whose keys are the names of the component instances that the form will contain. They should be JSON objects with a `__type` key defined, whose value should be the name of the component that will be instanced. The rest of the keys inside of the instance should be names of the fields of that component, followed by their values. You should specify the value of every field present on the component definition, except by fields with default value, which are optional. Example:
-
-```jsonc
-// components.json
-{
-  "__version": 0,
-
-  "label": {
-    "text": "string"
-  },
-
-  "button": {
-    "text": "string",
-    "enabled": {
-      "__type": "bool",
-      "__default": true
-    }
-  }
-}
-```
-
-```jsonc
-// forms.json
-{
-  "__version": 0,
-
-  "notice": {
-    "paragraph": {
-      "__type": "label",
-      "text": "Notice: This is to inform that your time has come."
-    },
-    "confirmButton": {
-      "__type": "button",
-      "text": "Okay"
-    }
-  }
+  ]
 }
 ```
