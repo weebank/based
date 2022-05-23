@@ -9,46 +9,47 @@ Our `sign-up.yml` file should look like this:
 
 ```yml
 _version: 1
-title:
-  _item: title
+_items:
+  - _id: title
+    _item: title
+    text: signUp
+  - _id: name
+    _item: textbox
+    _type: field
+    _rules:
+      - _action: regex
+        _param: ^[A-Z]+\w*(\s\w+)*$
+        invalidMsg: invalidFullName
+    text: yourFullName
+  - _id: email
+    _item: textbox
+    _type: field
+    _rules:
+      - _action: regex
+        _param: ^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$
+        invalidMsg: invalidEmail
   text: signUp
-name:
-  _item: textbox
-  _type: field
-  _rules:
-    - _action: regex
-      _param: ^[A-Z]+\w*(\s\w+)*$
-      invalidMsg: invalidFullName
-  text: yourFullName
-email:
-  _item: textbox
-  _type: field
-  _rules:
-    - _action: regex
-      _param: ^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$
-      invalidMsg: invalidEmail
-  text: signUp
-password1:
-  _item: textbox
-  _type: field
-  _rules:
-    - _action: regex
-      _param: ^[A-Z]+\w*(\s\w+)*$
-      invalidMsg: invalidPassword
-  text: yourPassword
-  hidden: true
-password2:
-  _item: textbox
-  _rules:
-    - _action: ==
-      _param: password1
-      invalidMsg: passwordsDontMatch
-  text: repeatYourPassword
-  hidden: true
-confirm:
-  _item: button
-  _type: action
-  text: next
+  - _id: password1
+    _item: textbox
+    _type: field
+    _rules:
+      - _action: regex
+        _param: ^[A-Z]+\w*(\s\w+)*$
+        invalidMsg: invalidPassword
+    text: yourPassword
+    hidden: true
+  - _id: password2
+    _item: textbox
+    _rules:
+      - _action: ==
+        _param: password1
+        invalidMsg: passwordsDontMatch
+    text: repeatYourPassword
+    hidden: true
+  - _id: confirm
+    _item: button
+    _type: action
+    text: next
 ```
 
 Here are some rules to follow when writing YAML files for your forms:
@@ -71,6 +72,13 @@ Once compiled, the form's DTO will look like this:
   "actions": ["confirm"],
   "fields": ["name", "email", "password1"],
   "layout": [
+    {
+      "id": "title",
+      "item": "title",
+      "props": {
+        "text": "signUp"
+      }
+    },
     {
       "id": "name",
       "item": "textbox",
@@ -116,6 +124,23 @@ Once compiled, the form's DTO will look like this:
           "param": "^[A-Z]+\\w*(\\s\\w+)*$",
           "props": {
             "invalidMsg": "invalidPassword"
+          }
+        }
+      ]
+    },
+    {
+      "id": "password2",
+      "item": "textbox",
+      "props": {
+        "hidden": true,
+        "text": "repeatYourPassword"
+      },
+      "rules": [
+        {
+          "action": "==",
+          "param": "password1",
+          "props": {
+            "invalidMsg": "passwordsDontMatch"
           }
         }
       ]
