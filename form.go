@@ -82,18 +82,20 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		item.Item = it.(string)
 
 		if ty, ok := v["_type"]; ok {
-			switch ty {
-			case "none":
-			case "action":
-				form.Actions = append(form.Actions, k)
-			case "field":
-				form.Fields = append(form.Fields, k)
-			default:
-				errs = append(errs, errors.New("item \""+k+"\" has an unknown \"_type\": "+ty.(string)))
+			if _, ok := ty.(string); ok {
+				switch ty {
+				case "none":
+				case "action":
+					form.Actions = append(form.Actions, k)
+				case "field":
+					form.Fields = append(form.Fields, k)
+				default:
+					errs = append(errs, errors.New("item \""+k+"\" has an unknown \"_type\": "+ty.(string)))
+				}
+			} else {
+				errs = append(errs, errors.New("item \""+k+"\" has a \"_type\" field that is not a string"))
+				continue
 			}
-		} else if _, ok := ty.(string); !ok {
-			errs = append(errs, errors.New("item \""+k+"\" has a \"_type\" field that is not a string"))
-			continue
 		}
 
 		if rules, ok := v["_rules"]; ok {
