@@ -1,9 +1,9 @@
 _version: 1
 _items:
   - _id: title
-    _type: title
+    _item: title
     text: welcomeMessage
   - _id: button
-    _type: button
-    _input: action
+    _item: button
+    _type: action
     text: continue
