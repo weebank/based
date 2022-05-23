@@ -1,8 +1,9 @@
-# v1
-title:
-  _type: title
-  text: welcomeMessage
-button:
-  _type: button
-  _input: action
-  text: continue
+_version: 1
+_items:
+  - _id: title
+    _type: title
+    text: welcomeMessage
+  - _id: button
+    _type: button
+    _input: action
+    text: continue
