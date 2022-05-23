@@ -81,23 +81,19 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		}
 		item.Item = it.(string)
 
-		ty, ok := v["_type"]
-		if !ok {
-			continue
-		}
-		if _, ok := ty.(string); !ok {
+		if ty, ok := v["_type"]; ok {
+			switch ty {
+			case "none":
+			case "action":
+				form.Actions = append(form.Actions, k)
+			case "field":
+				form.Fields = append(form.Fields, k)
+			default:
+				errs = append(errs, errors.New("item \""+k+"\" has an unknown \"_type\": "+ty.(string)))
+			}
+		} else if _, ok := ty.(string); !ok {
 			errs = append(errs, errors.New("item \""+k+"\" has a \"_type\" field that is not a string"))
 			continue
-		}
-
-		switch ty {
-		case "none":
-		case "action":
-			form.Actions = append(form.Actions, k)
-		case "field":
-			form.Fields = append(form.Fields, k)
-		default:
-			errs = append(errs, errors.New("item \""+k+"\" has an unknown \"_type\": "+ty.(string)))
 		}
 
 		if rules, ok := v["_rules"]; ok {
@@ -105,7 +101,6 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 				errs = append(errs, errors.New("item \""+k+"\" has a \"_rules\" field that is not a list"))
 				continue
 			}
-
 			for i, rule := range rules.([]interface{}) {
 				rule, ok := rule.(map[interface{}]interface{})
 				if !ok {
