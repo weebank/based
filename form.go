@@ -71,7 +71,7 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		errs = append(errs, errors.New("form \""+formName+"\" has no \"_version\" field"))
 		return
 	}
-	if _, ok := ver.(string); !ok {
+	if _, ok := ver.(int); !ok {
 		errs = append(errs, errors.New("form \""+formName+"\" has a \"_version\" field that is not a number"))
 		return
 	}
