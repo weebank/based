@@ -88,7 +88,8 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 
 	form = &Form{Name: formName, Actions: []string{}, Fields: []string{}, Layout: []Item{}}
 
-	for k, v := range items.([]map[string]interface{}) {
+	for k, i := range items.([]interface{}) {
+		v := i.(map[interface{}]interface{})
 		id, ok := v["_id"]
 		if !ok {
 			errs = append(errs, errors.New("item of index \""+fmt.Sprint(k)+"\" has no \"_id\" field"))
@@ -194,8 +195,8 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		}
 
 		for k, p := range v {
-			if !strings.HasPrefix(k, "_") {
-				item.Props[k] = p
+			if !strings.HasPrefix(k.(string), "_") {
+				item.Props[k.(string)] = p
 			}
 		}
 
