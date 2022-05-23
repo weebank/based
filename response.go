@@ -1,10 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 )
@@ -64,29 +62,4 @@ func ValidateResponse(response map[string]string, form *Form) ResponseErrors {
 		}
 	}
 	return errs
-}
-
-func main() {
-	var arg string
-	if len(os.Args) > 1 {
-		arg = os.Args[1]
-	}
-
-	form, errs := CompileForm("forms/sign-up.yml")
-	m := map[string]string{}
-	json.Unmarshal(
-		[]byte(arg), &m,
-	)
-	if len(errs) > 0 {
-		fmt.Println(errs.Error())
-	}
-
-	SanitizeResponse(&m, form)
-	errs1 := ValidateResponse(m, form)
-	if len(errs1) > 0 {
-		fmt.Println(errs1.Error())
-	}
-
-	b, _ := json.MarshalIndent(form, "", "    ")
-	fmt.Println(string(b))
 }
