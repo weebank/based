@@ -44,21 +44,27 @@ func ValidateResponse(response map[string]string, form *Form) ResponseErrors {
 
 	for _, l := range form.Layout {
 		if res, ok := response[l.ID]; ok {
-			for i, r := range l.Rules {
-				var matchesRule bool
-				switch r.Action {
-				case "==":
-					matchesRule = response[r.Param] == res
-				case "!=":
-					matchesRule = response[r.Param] != res
-				case "regex":
-					reg := regexp.MustCompile(r.Param)
-					matchesRule = reg.Match([]byte(res))
-				}
-				if !matchesRule {
-					errs = append(errs, errors.New(l.ID+" does not match rule "+fmt.Sprint(i)))
+			for _, v := range form.Fields {
+				if l.ID == v {
+					for i, r := range l.Rules {
+						var matchesRule bool
+						switch r.Action {
+						case "==":
+							matchesRule = response[r.Param] == res
+						case "!=":
+							matchesRule = response[r.Param] != res
+						case "regex":
+							reg := regexp.MustCompile(r.Param)
+							matchesRule = reg.Match([]byte(res))
+						}
+						if !matchesRule {
+							errs = append(errs, errors.New(l.ID+" does not match rule "+fmt.Sprint(i)))
+						}
+					}
+					break
 				}
 			}
+
 		}
 	}
 	return errs
