@@ -30,7 +30,7 @@ type Item struct {
 	ID    string                 `json:"id"`
 	Item  string                 `json:"item"`
 	Props map[string]interface{} `json:"props,omitempty"`
-	Rule  Rule                   `json:"rule,omitempty"`
+	Rule  *Rule                  `json:"rule,omitempty"`
 }
 
 type Form struct {
@@ -138,10 +138,14 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		}
 
 		if rule, ok := v["_rule"]; ok {
-			r, ruleErrs := CompileRule(rule, key, 0)
+			r := new(Rule)
+			rule, ruleErrs := CompileRule(rule, key, 0)
+			*r = rule
+
 			if len(ruleErrs) > 0 {
 				errs = append(errs, ruleErrs)
 			}
+
 			item.Rule = r
 		}
 

@@ -46,7 +46,7 @@ func ValidateResponse(responses map[string]string, form *Form) ResponseErrors {
 		if _, ok := responses[l.ID]; ok {
 			for _, v := range form.Fields {
 				if l.ID == v {
-					ruleErrs := ValidateRule(l.Rule, 0, l.ID, responses)
+					ruleErrs := ValidateRule(*l.Rule, 0, l.ID, responses)
 					errs = append(errs, ruleErrs)
 					break
 				}
