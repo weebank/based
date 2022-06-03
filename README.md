@@ -16,34 +16,34 @@ _items:
   - _id: name
     _item: textbox
     _type: field
-    _rules:
-      - _action: regex
-        _param: ^[A-Z]+\w*(\s\w+)*$
-        invalidMsg: invalidFullName
+    _rule:
+      _action: regex
+      _param: ^[A-Z]+\w*(\s\w+)*$
+      invalidMsg: invalidFullName
     text: yourFullName
   - _id: email
     _item: textbox
     _type: field
-    _rules:
-      - _action: regex
-        _param: ^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$
-        invalidMsg: invalidEmail
+    _rule:
+      _action: regex
+      _param: ^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$
+      invalidMsg: invalidEmail
   text: signUp
   - _id: password1
     _item: textbox
     _type: field
-    _rules:
-      - _action: regex
-        _param: ^[A-Z]+\w*(\s\w+)*$
-        invalidMsg: invalidPassword
+    _rule:
+      _action: regex
+      _param: ^[A-Z]+\w*(\s\w+)*$
+      invalidMsg: invalidPassword
     text: yourPassword
     hidden: true
   - _id: password2
     _item: textbox
-    _rules:
-      - _action: ==
-        _param: password1
-        invalidMsg: passwordsDontMatch
+    _rule:
+      _action: ==
+      _param: password1
+      invalidMsg: passwordsDontMatch
     text: repeatYourPassword
     hidden: true
   - _id: confirm
@@ -62,7 +62,7 @@ Here are some rules to follow when writing YAML files for your forms:
 - `_item` indicates the component the front end must render for this item;
 - `_type` can have 3 values: `none` (default if ommited), `field` (that indicates the front end should send data through this item), and `action` (that indicates the front end is able to perform an action through this item, such as confirming or canceling some process);
 - `_rules` is a list of rules that the value of the field must follow. If the current item has rules but is not a field, then they will not be validated by **based** (in those cases, it's assumed that the front end is responsible for those validations);
-- A rule has an `_action` (that can be `==` for equality, `!=` for inequality, and `regex`, for regular expressions) and a `_param` (that, in case of equality/inequality operations, indicates which item ID to be compared to; and in case of a regex operation, the regular expression it should be matched to).
+- A rule has an `_action` (that can be `==` for equality, `!=` for inequality, `regex` for regular expressions, `or` and `and` for logical operators) and a `_param` (that, in case of equality/inequality operations, indicates which item ID to be compared to; in case of a regex operation, the regular expression it should be matched to; and in case of a logical operator, the parameter must be an array of rules to be matched).
 
 Once compiled, the form's DTO will look like this:
 
@@ -85,15 +85,13 @@ Once compiled, the form's DTO will look like this:
       "props": {
         "text": "yourFullName"
       },
-      "rules": [
-        {
-          "action": "regex",
-          "param": "^[A-Z]+\\w*(\\s\\w+)*$",
-          "props": {
-            "invalidMsg": "invalidFullName"
-          }
+      "rule": {
+        "action": "regex",
+        "param": "^[A-Z]+\\w*(\\s\\w+)*$",
+        "props": {
+          "invalidMsg": "invalidFullName"
         }
-      ]
+      }
     },
     {
       "id": "email",
@@ -101,15 +99,13 @@ Once compiled, the form's DTO will look like this:
       "props": {
         "text": "signUp"
       },
-      "rules": [
-        {
-          "action": "regex",
-          "param": "^\\w+([\\.-]?\\w+)*@\\w+([\\.-]?\\w+)*(\\.\\w{2,3})+$",
-          "props": {
-            "invalidMsg": "invalidEmail"
-          }
+      "rule": {
+        "action": "regex",
+        "param": "^\\w+([\\.-]?\\w+)*@\\w+([\\.-]?\\w+)*(\\.\\w{2,3})+$",
+        "props": {
+          "invalidMsg": "invalidEmail"
         }
-      ]
+      }
     },
     {
       "id": "password1",
@@ -118,15 +114,13 @@ Once compiled, the form's DTO will look like this:
         "hidden": true,
         "text": "yourPassword"
       },
-      "rules": [
-        {
-          "action": "regex",
-          "param": "^[A-Z]+\\w*(\\s\\w+)*$",
-          "props": {
-            "invalidMsg": "invalidPassword"
-          }
+      "rules": {
+        "action": "regex",
+        "param": "^[A-Z]+\\w*(\\s\\w+)*$",
+        "props": {
+          "invalidMsg": "invalidPassword"
         }
-      ]
+      }
     },
     {
       "id": "password2",
@@ -135,15 +129,13 @@ Once compiled, the form's DTO will look like this:
         "hidden": true,
         "text": "repeatYourPassword"
       },
-      "rules": [
-        {
-          "action": "==",
-          "param": "password1",
-          "props": {
-            "invalidMsg": "passwordsDontMatch"
-          }
+      "rule": {
+        "action": "==",
+        "param": "password1",
+        "props": {
+          "invalidMsg": "passwordsDontMatch"
         }
-      ]
+      }
     },
     {
       "id": "confirm",
