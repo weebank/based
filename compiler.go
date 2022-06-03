@@ -19,8 +19,8 @@ type Rule struct {
 }
 
 const (
-	AND   = "&&"
-	OR    = "||"
+	AND   = "and"
+	OR    = "or"
 	EQ    = "=="
 	INEQ  = "!="
 	REGEX = "regex"
