@@ -108,7 +108,7 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		}
 
 		key := id.(string)
-		item := Item{ID: key, Props: map[string]interface{}{}, Rule: Rule{}}
+		item := Item{ID: key, Props: map[string]interface{}{}}
 
 		it, ok := v["_item"]
 		if !ok {
