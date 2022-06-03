@@ -30,7 +30,7 @@ type Item struct {
 	ID    string                 `json:"id"`
 	Item  string                 `json:"item"`
 	Props map[string]interface{} `json:"props,omitempty"`
-	Rules []Rule                 `json:"rules,omitempty"`
+	Rule  Rule                   `json:"rule,omitempty"`
 }
 
 type Form struct {
@@ -108,7 +108,7 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		}
 
 		key := id.(string)
-		item := Item{ID: key, Props: map[string]interface{}{}, Rules: []Rule{}}
+		item := Item{ID: key, Props: map[string]interface{}{}, Rule: Rule{}}
 
 		it, ok := v["_item"]
 		if !ok {
@@ -137,18 +137,12 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 			}
 		}
 
-		if rules, ok := v["_rules"]; ok {
-			if ty := reflect.ValueOf(rules); ty.Kind() != reflect.Slice {
-				errs = append(errs, errors.New("item \""+key+"\" has a \"_rules\" field that is not a list"))
-				continue
+		if rule, ok := v["_rule"]; ok {
+			r, ruleErrs := CompileRule(rule, key, 0)
+			if len(ruleErrs) > 0 {
+				errs = append(errs, ruleErrs)
 			}
-			for i, rule := range rules.([]interface{}) {
-				r, ruleErrs := CompileRule(rule, key, i)
-				if len(ruleErrs) > 0 {
-					errs = append(errs, ruleErrs)
-				}
-				item.Rules = append(item.Rules, r)
-			}
+			item.Rule = r
 		}
 
 		for k, p := range v {
