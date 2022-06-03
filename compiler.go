@@ -13,19 +13,17 @@ import (
 )
 
 type Rule struct {
-	Action Operation              `json:"action"`
+	Action string                 `json:"action"`
 	Param  interface{}            `json:"param"`
 	Props  map[string]interface{} `json:"props,omitempty"`
 }
 
-type Operation string
-
 const (
-	AND   Operation = "&&"
-	OR              = "||"
-	EQ              = "=="
-	INEQ            = "!="
-	REGEX           = "regex"
+	AND   = "&&"
+	OR    = "||"
+	EQ    = "=="
+	INEQ  = "!="
+	REGEX = "regex"
 )
 
 type Item struct {
@@ -187,7 +185,7 @@ func CompileRule(ruleObj interface{}, key string, i int) (r Rule, errs FormError
 		return
 	}
 
-	r = Rule{Action: action.(Operation), Props: map[string]interface{}{}}
+	r = Rule{Action: action.(string), Props: map[string]interface{}{}}
 	switch action {
 	case AND, OR:
 		if ty := reflect.ValueOf(param); ty.Kind() != reflect.Slice {
