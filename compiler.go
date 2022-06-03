@@ -13,10 +13,20 @@ import (
 )
 
 type Rule struct {
-	Action string                 `json:"action"`
-	Param  string                 `json:"param"`
+	Action Operation              `json:"action"`
+	Param  interface{}            `json:"param"`
 	Props  map[string]interface{} `json:"props,omitempty"`
 }
+
+type Operation string
+
+const (
+	AND   Operation = "&&"
+	OR              = "||"
+	EQ              = "=="
+	INEQ            = "!="
+	REGEX           = "regex"
+)
 
 type Item struct {
 	ID    string                 `json:"id"`
@@ -135,61 +145,10 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 				continue
 			}
 			for i, rule := range rules.([]interface{}) {
-				rule, ok := rule.(map[interface{}]interface{})
-				if !ok {
-					errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") that is not an object"))
-					continue
+				r, ruleErrs := CompileRule(rule, key, i)
+				if len(ruleErrs) > 0 {
+					errs = append(errs, ruleErrs)
 				}
-
-				isInvalid := false
-
-				action, ok := rule["_action"]
-				if !ok {
-					errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") that has no \"_action\" field"))
-					isInvalid = true
-				} else if _, ok := action.(string); !ok {
-					errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" field is not a string"))
-					isInvalid = true
-				}
-
-				param, ok := rule["_param"]
-				if !ok {
-					errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") that has no \"_param\" field"))
-					isInvalid = true
-				} else if _, ok := param.(string); !ok {
-					errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") whose \"_param\" field is not a string"))
-					isInvalid = true
-				}
-
-				if isInvalid {
-					continue
-				}
-
-				switch action {
-				case "==", "!=":
-				case "regex":
-					_, err := regexp.Compile(param.(string))
-					if err != nil {
-						fmt.Println(err)
-						errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" is \"regex\" but its \"_param\" is not a valid regex"))
-						continue
-					}
-				default:
-					errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") has an unknown \"_action\": "+action.(string)))
-					continue
-				}
-
-				r := Rule{Action: action.(string), Param: param.(string), Props: map[string]interface{}{}}
-				for k, v := range rule {
-					key, ok := k.(string)
-					if !ok {
-						continue
-					}
-					if !strings.HasPrefix(key, "_") {
-						r.Props[key] = v
-					}
-				}
-
 				item.Rules = append(item.Rules, r)
 			}
 		}
@@ -203,5 +162,76 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		form.Layout = append(form.Layout, item)
 	}
 
+	return
+}
+
+func CompileRule(ruleObj interface{}, key string, i int) (r Rule, errs FormErrors) {
+	rule, ok := ruleObj.(map[interface{}]interface{})
+	if !ok {
+		errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") that is not an object"))
+		return
+	}
+
+	action, ok := rule["_action"]
+	if !ok {
+		errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") that has no \"_action\" field"))
+		return
+	} else if _, ok := action.(string); !ok {
+		errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" field is not a string"))
+		return
+	}
+
+	param, ok := rule["_param"]
+	if !ok {
+		errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") that has no \"_param\" field"))
+		return
+	}
+
+	r = Rule{Action: action.(Operation), Props: map[string]interface{}{}}
+	switch action {
+	case AND, OR:
+		if ty := reflect.ValueOf(param); ty.Kind() != reflect.Slice {
+			errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" field demands a list parameter, but \"_param\" field is not a list"))
+			return
+		}
+		rules := []Rule{}
+		for i, rule := range param.([]interface{}) {
+			r, ruleErrs := CompileRule(rule, key, i)
+			if len(ruleErrs) > 0 {
+				errs = append(errs, ruleErrs)
+			}
+			rules = append(rules, r)
+		}
+		r.Param = rules
+	case EQ, INEQ, REGEX:
+		if _, ok := param.(string); !ok {
+			errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" field demands a string parameter, but \"_param\" field is not a string"))
+			return
+		}
+		r.Param = param
+		if action != REGEX {
+			break
+		}
+
+		_, err := regexp.Compile(param.(string))
+		if err != nil {
+			fmt.Println(err)
+			errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" is \"regex\" but its \"_param\" is not a valid regex"))
+			return
+		}
+	default:
+		errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") has an unknown \"_action\": "+action.(string)))
+		return
+	}
+
+	for k, v := range rule {
+		key, ok := k.(string)
+		if !ok {
+			continue
+		}
+		if !strings.HasPrefix(key, "_") {
+			r.Props[key] = v
+		}
+	}
 	return
 }
