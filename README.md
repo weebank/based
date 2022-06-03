@@ -61,7 +61,7 @@ Here are some rules to follow when writing YAML files for your forms:
 - The keys that start with an underscore (such as `_item`) are reserved and will not be forwarded to the compiled form;
 - `_item` indicates the component the front end must render for this item;
 - `_type` can have 3 values: `none` (default if ommited), `field` (that indicates the front end should send data through this item), and `action` (that indicates the front end is able to perform an action through this item, such as confirming or canceling some process);
-- `_rules` is a list of rules that the value of the field must follow. If the current item has rules but is not a field, then they will not be validated by **based** (in those cases, it's assumed that the front end is responsible for those validations);
+- `_rule` specify a validation that the value of the field must follow. If the current item has rules but is not a field, then they will not be validated by **based** (in those cases, it's assumed that the front end is responsible for those validations);
 - A rule has an `_action` (that can be `==` for equality, `!=` for inequality, `regex` for regular expressions, `or` and `and` for logical operators) and a `_param` (that, in case of equality/inequality operations, indicates which item ID to be compared to; in case of a regex operation, the regular expression it should be matched to; and in case of a logical operator, the parameter must be an array of rules to be matched).
 
 Once compiled, the form's DTO will look like this:
