@@ -1,0 +1,33 @@
+_version: 1
+_items:
+  - _id: title
+    _item: title
+    text: title.info
+  - _id: name
+    _item: textbox
+    _type: field
+    _rules:
+      - _action: regex
+        _param: ^[A-Z]+\w*(\s\w+)*$
+        invalidMsg: input.name.error.invalid
+    hint: input.name.hint
+  - _id: cpf
+    _item: textbox
+    _type: field
+    _rules:
+      - _action: regex
+        _param: ^(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})$
+        invalidMsg: input.cpf.error.invalid
+    hint: input.cpf.hint
+  - _id: email
+    _item: textbox
+    _type: field
+    _rules:
+      - _action: regex
+        _param: ^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$
+        invalidMsg: input.email.error.invalid
+    hint: input.email.hint
+  - _id: next
+    _item: button
+    _type: action
+    text: button.next

@@ -31,8 +31,8 @@ func NewService(baseDir string) WorkflowService {
 
 // Workflow builder (utilitary struct used to build workflows with steps)
 type WorkflowBuilder struct {
-	workflowService *WorkflowService
-	workflow        string
+	service  *WorkflowService
+	workflow string
 }
 
 // Create new workflow and add it to the service
@@ -46,21 +46,37 @@ func (wS *WorkflowService) NewWorkflow(name string) WorkflowBuilder {
 
 // Workflow step
 type WorkflowStep struct {
-	Validate func(responses form.ResponseCollection) error
+	form     *form.Form
+	validate func(responses form.ResponseCollection) error
 }
 
 // Add step to build workflow
-func (w WorkflowBuilder) AddStep(name string, step WorkflowStep) error {
-	workflow, ok := w.workflowService.Workflow(w.workflow)
+func (w WorkflowBuilder) AddStep(name string, hasForm bool, validate func(responses form.ResponseCollection) error) error {
+	// Check workflow
+	workflow, ok := w.service.Workflow(w.workflow)
 	if !ok {
 		return errors.New("workflow does not exist")
 	}
 
+	// Add initial step (if needed)
 	if workflow.initialStep == "" {
 		workflow.initialStep = name
 	}
+
+	// Build step
+	step := WorkflowStep{}
+
+	// Compile form (if needed)
+	if formName != "" {
+		var errs form.FormErrors
+		if step.form, errs = form.CompileForm(w.service.baseDir); len(errs) > 0 {
+			return errs
+		}
+	}
+
+	// Add step
 	workflow.steps[name] = step
-	w.workflowService.workflows[w.workflow] = workflow
+	w.service.workflows[w.workflow] = workflow
 
 	return nil
 }

@@ -14,11 +14,11 @@ func main() {
 
 	// Sign Up
 	signUp := wS.NewWorkflow("sign-up")
-	signUp.AddStep("welcome",
-		workflow.WorkflowStep{
-			Validate: func(responses form.ResponseCollection) error {
-				return nil
-			},
+	signUp.AddStep(
+		"welcome",
+		true,
+		func(responses form.ResponseCollection) error {
+			return nil
 		},
 	)
 

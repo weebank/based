@@ -139,7 +139,7 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 
 		if rule, ok := v["_rule"]; ok {
 			r := new(Rule)
-			rule, ruleErrs := CompileRule(rule, key, 0)
+			rule, ruleErrs := compileRule(rule, key, 0)
 			*r = rule
 
 			if len(ruleErrs) > 0 {
@@ -161,7 +161,7 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 	return
 }
 
-func CompileRule(ruleObj interface{}, key string, i int) (r Rule, errs FormErrors) {
+func compileRule(ruleObj interface{}, key string, i int) (r Rule, errs FormErrors) {
 	rule, ok := ruleObj.(map[interface{}]interface{})
 	if !ok {
 		errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") that is not an object"))
@@ -192,7 +192,7 @@ func CompileRule(ruleObj interface{}, key string, i int) (r Rule, errs FormError
 		}
 		rules := []Rule{}
 		for i, rule := range param.([]interface{}) {
-			r, ruleErrs := CompileRule(rule, key, i)
+			r, ruleErrs := compileRule(rule, key, i)
 			if len(ruleErrs) > 0 {
 				errs = append(errs, ruleErrs)
 			}
