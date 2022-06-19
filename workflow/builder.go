@@ -67,7 +67,7 @@ func (w WorkflowBuilder) AddStep(name string, hasForm bool, validate func(respon
 	step := WorkflowStep{}
 
 	// Compile form (if needed)
-	if formName != "" {
+	if hasForm {
 		var errs form.FormErrors
 		if step.form, errs = form.CompileForm(w.service.baseDir); len(errs) > 0 {
 			return errs
