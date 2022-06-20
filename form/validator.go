@@ -45,15 +45,17 @@ func ValidateResponse(responses ResponseCollection, form *Form) ResponseErrors {
 	}
 
 	for _, l := range form.Layout {
-		if _, ok := responses[l.ID]; ok {
-			for _, v := range form.Fields {
-				if l.ID == v {
-					ruleErrs := ValidateRule(*l.Rule, 0, l.ID, responses)
-					errs = append(errs, ruleErrs)
-					break
+		for _, i := range l {
+			if _, ok := responses[i.ID]; ok {
+				for _, v := range form.Fields {
+					if i.ID == v {
+						ruleErrs := ValidateRule(*i.Rule, 0, i.ID, responses)
+						errs = append(errs, ruleErrs)
+						break
+					}
 				}
-			}
 
+			}
 		}
 	}
 	return errs

@@ -37,7 +37,7 @@ type Form struct {
 	Name    string   `json:"name"`
 	Actions []string `json:"actions"`
 	Fields  []string `json:"fields"`
-	Layout  []Item   `json:"layout"`
+	Layout  [][]Item `json:"layout"`
 }
 
 type FormErrors []error
@@ -94,8 +94,8 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		return
 	}
 
-	form = &Form{Name: formName, Actions: []string{}, Fields: []string{}, Layout: []Item{}}
-
+	form = &Form{Name: formName, Actions: []string{}, Fields: []string{}, Layout: [][]Item{}}
+	slot := make([]Item, 0)
 	for k, i := range items.([]interface{}) {
 		v := i.(map[interface{}]interface{})
 		id, ok := v["_id"]
@@ -155,7 +155,12 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 			}
 		}
 
-		form.Layout = append(form.Layout, item)
+		if len(slot) > 0 && slot[0].Item != item.Item {
+			form.Layout = append(form.Layout, slot)
+			slot = make([]Item, 0)
+		} else {
+			slot = append(slot, item)
+		}
 	}
 
 	return
