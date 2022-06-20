@@ -163,6 +163,10 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		}
 	}
 
+	if len(slot) > 0 {
+		form.Layout = append(form.Layout, slot)
+	}
+
 	return
 }
 
