@@ -1,9 +1,0 @@
-_version: 1
-_items:
-  - _id: title
-    _item: title
-    text: title.welcome
-  - _id: button
-    _item: button
-    _type: action
-    text: button.start
