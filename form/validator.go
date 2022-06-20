@@ -45,7 +45,7 @@ func ValidateResponse(responses ResponseCollection, form *Form) ResponseErrors {
 	}
 
 	for _, l := range form.Layout {
-		for _, i := range l {
+		for _, i := range l.Items {
 			if _, ok := responses[i.ID]; ok {
 				for _, v := range form.Fields {
 					if i.ID == v {

@@ -28,16 +28,20 @@ const (
 
 type Item struct {
 	ID    string                 `json:"id"`
-	Item  string                 `json:"item"`
 	Props map[string]interface{} `json:"props,omitempty"`
 	Rule  *Rule                  `json:"rule,omitempty"`
+}
+
+type Group struct {
+	Class string `json:"class"`
+	Items []Item `json:"items"`
 }
 
 type Form struct {
 	Name    string   `json:"name"`
 	Actions []string `json:"actions"`
 	Fields  []string `json:"fields"`
-	Layout  [][]Item `json:"layout"`
+	Layout  []Group  `json:"layout"`
 }
 
 type FormErrors []error
@@ -74,16 +78,6 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 	name := strings.Split(filepath.Base(path), ".")
 	formName := strings.Join(name[:len(name)-1], "")
 
-	ver, ok := raw["_version"]
-	if !ok {
-		errs = append(errs, errors.New("form \""+formName+"\" has no \"_version\" field"))
-		return
-	}
-	if _, ok := ver.(int); !ok {
-		errs = append(errs, errors.New("form \""+formName+"\" has a \"_version\" field that is not a number"))
-		return
-	}
-
 	items, ok := raw["_items"]
 	if !ok {
 		errs = append(errs, errors.New("form \""+formName+"\" has no \"_items\" field"))
@@ -94,8 +88,8 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		return
 	}
 
-	form = &Form{Name: formName, Actions: []string{}, Fields: []string{}, Layout: [][]Item{}}
-	slot := make([]Item, 0)
+	form = &Form{Name: formName, Actions: []string{}, Fields: []string{}, Layout: []Group{}}
+	group := Group{Items: make([]Item, 0)}
 	for k, i := range items.([]interface{}) {
 		v := i.(map[interface{}]interface{})
 		id, ok := v["_id"]
@@ -110,15 +104,15 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		key := id.(string)
 		item := Item{ID: key, Props: map[string]interface{}{}}
 
-		it, ok := v["_item"]
+		cl, ok := v["_class"]
 		if !ok {
-			errs = append(errs, errors.New("item \""+key+"\" has no \"_item\" field"))
+			errs = append(errs, errors.New("item \""+key+"\" has no \"_class\" field"))
 			continue
 		}
-		if _, ok := it.(string); !ok {
-			errs = append(errs, errors.New("item \""+key+"\" has an \"_item\" field that is not a string"))
+		if _, ok := cl.(string); !ok {
+			errs = append(errs, errors.New("item \""+key+"\" has an \"_class\" field that is not a string"))
 		}
-		item.Item = it.(string)
+		class := cl.(string)
 
 		if ty, ok := v["_type"]; ok {
 			if _, ok := ty.(string); ok {
@@ -155,16 +149,16 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 			}
 		}
 
-		if len(slot) > 0 && slot[0].Item != item.Item {
-			form.Layout = append(form.Layout, slot)
-			slot = []Item{item}
+		if group.Class != "" && group.Class != class {
+			form.Layout = append(form.Layout, group)
+			group = Group{Class: class, Items: []Item{item}}
 		} else {
-			slot = append(slot, item)
+			group.Items = append(group.Items, item)
 		}
 	}
 
-	if len(slot) > 0 {
-		form.Layout = append(form.Layout, slot)
+	if group.Class != "" {
+		form.Layout = append(form.Layout, group)
 	}
 
 	return
