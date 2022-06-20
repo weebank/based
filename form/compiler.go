@@ -88,7 +88,7 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		return
 	}
 
-	form = &Form{Name: formName, Actions: []string{}, Fields: []string{}, Layout: []Group{}}
+	form = &Form{Name: formName, Actions: make([]string, 0), Fields: make([]string, 0), Layout: make([]Group, 0)}
 	group := Group{Items: make([]Item, 0)}
 	for k, i := range items.([]interface{}) {
 		v := i.(map[interface{}]interface{})
@@ -102,7 +102,7 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 		}
 
 		key := id.(string)
-		item := Item{ID: key, Props: map[string]interface{}{}}
+		item := Item{ID: key, Props: make(map[string]interface{})}
 
 		cl, ok := v["_class"]
 		if !ok {
@@ -149,12 +149,17 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 			}
 		}
 
-		if group.Class != "" && group.Class != class {
+		if group.Class == "" {
+			group.Class = class
+		}
+		if group.Class == class {
+			group.Items = append(group.Items, item)
+		} else {
 			form.Layout = append(form.Layout, group)
 			group = Group{Class: class, Items: []Item{item}}
-		} else {
-			group.Items = append(group.Items, item)
+
 		}
+
 	}
 
 	if group.Class != "" {
