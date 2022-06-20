@@ -157,7 +157,7 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 
 		if len(slot) > 0 && slot[0].Item != item.Item {
 			form.Layout = append(form.Layout, slot)
-			slot = make([]Item, 0)
+			slot = []Item{item}
 		} else {
 			slot = append(slot, item)
 		}
