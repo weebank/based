@@ -159,7 +159,6 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 			group = Group{Class: class, Items: []Item{item}}
 
 		}
-
 	}
 
 	if group.Class != "" {

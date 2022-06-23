@@ -47,11 +47,11 @@ func (wS *WorkflowService) NewWorkflow(name string) WorkflowBuilder {
 // Workflow step
 type WorkflowStep struct {
 	form     *form.Form
-	validate func(responses form.ResponseCollection) error
+	validate func(responses form.ResponseCollection, isFormValid bool) string
 }
 
 // Add step to build workflow
-func (w WorkflowBuilder) AddStep(name string, hasForm bool, validate func(responses form.ResponseCollection) error) error {
+func (w WorkflowBuilder) AddStep(name string, hasForm bool, validate func(responses form.ResponseCollection, isFormValid bool) string) error {
 	// Check workflow
 	workflow, ok := w.service.Workflow(w.workflow)
 	if !ok {
@@ -93,7 +93,7 @@ func (wS WorkflowService) Routes() []string {
 	return routes
 }
 
-// Return a workflow and if it exists
+// Return a workflow if it exists
 func (wS WorkflowService) Workflow(workflow string) (Workflow, bool) {
 	wf, ok := wS.workflows[workflow]
 
