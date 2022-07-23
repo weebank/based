@@ -2,8 +2,8 @@ package form
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -19,82 +19,88 @@ func (re ResponseErrors) Error() (s string) {
 	return strings.Join(str, ", ")
 }
 
-func SanitizeResponse(responses *ResponseCollection, form *Form) {
-	for k := range *responses {
-		var isValid bool
-		for _, f := range form.Fields {
-			if k == f {
-				isValid = true
-			}
-		}
-
-		if !isValid {
-			delete(*responses, k)
+func SanitizeResponse(form *Form, step string, resps *ResponseCollection) {
+	for field := range *resps {
+		if _, ok := form.Steps[step][field]; !ok {
+			delete(*resps, field)
 		}
 	}
 }
 
-func ValidateResponse(responses ResponseCollection, form *Form) ResponseErrors {
-	errs := ResponseErrors{}
-	for _, f := range form.Fields {
-		_, ok := responses[f]
+func ValidateResponse(form *Form, step string, resps *ResponseCollection) (err ResponseErrors) {
+	for field, rule := range form.Steps[step] {
+		resp, ok := (*resps)[field]
 		if !ok {
-			errs = append(errs, errors.New(f+" has no matching response field"))
+			err = append(err, errors.New(field+" has no matching response field"))
 			continue
 		}
-	}
 
-	for _, l := range form.Layout {
-		for _, i := range l.Items {
-			if _, ok := responses[i.ID]; ok {
-				for _, v := range form.Fields {
-					if i.ID == v {
-						ruleErrs := ValidateRule(*i.Rule, 0, i.ID, responses)
-						errs = append(errs, ruleErrs)
-						break
-					}
-				}
-
-			}
+		ruleErr := ValidateRule(field, rule, resp)
+		if ruleErr != nil {
+			err = append(err, ruleErr)
 		}
 	}
-	return errs
+
+	if len(err) > 0 {
+		return err
+	} else {
+		return nil
+	}
 }
 
-func ValidateRule(r Rule, i int, ID string, response ResponseCollection) (errs ResponseErrors) {
+func ValidateRule(field string, rule Rule, resp string) (err ResponseErrors) {
 	var matchesRule bool
-	switch r.Action {
+	switch rule.Op {
 	case OR:
 		matchesRule = false
-		ruleErrs := ResponseErrors{}
-		for i, rule := range r.Param.([]Rule) {
-			ruleErrs = append(ruleErrs, ValidateRule(rule, i, ID, response))
-			if len(ruleErrs) == 0 {
+		for _, r := range rule.Param.([]Rule) {
+			ruleErr := ValidateRule(field, r, resp)
+			if ruleErr == nil {
 				matchesRule = true
 				break
+			} else {
+				err = append(err, ruleErr)
 			}
 		}
-		errs = append(errs, ruleErrs)
 	case AND:
 		matchesRule = true
-		for i, rule := range r.Param.([]Rule) {
-			ruleErrs := ValidateRule(rule, i, ID, response)
-			if len(ruleErrs) > 0 {
-				errs = append(errs, ruleErrs)
+		for _, r := range rule.Param.([]Rule) {
+			ruleErr := ValidateRule(field, r, resp)
+			if ruleErr != nil {
+				err = append(err, ruleErr)
 				matchesRule = false
 				break
 			}
 		}
 	case EQ:
-		matchesRule = response[r.Param.(string)] == response[ID]
-	case INEQ:
-		matchesRule = response[r.Param.(string)] != response[ID]
+		number, _ := strconv.ParseFloat(resp, 64)
+		matchesRule = number == rule.Param.(float64)
+	case NEQ:
+		number, _ := strconv.ParseFloat(resp, 64)
+		matchesRule = number != rule.Param.(float64)
+	case GT:
+		number, _ := strconv.ParseFloat(resp, 64)
+		matchesRule = number > rule.Param.(float64)
+	case GTE:
+		number, _ := strconv.ParseFloat(resp, 64)
+		matchesRule = number >= rule.Param.(float64)
+	case LT:
+		number, _ := strconv.ParseFloat(resp, 64)
+		matchesRule = number < rule.Param.(float64)
+	case LTE:
+		number, _ := strconv.ParseFloat(resp, 64)
+		matchesRule = number <= rule.Param.(float64)
 	case REGEX:
-		reg := regexp.MustCompile(r.Param.(string))
-		matchesRule = reg.Match([]byte(response[ID]))
+		reg := regexp.MustCompile(rule.Param.(string))
+		matchesRule = reg.Match([]byte(resp))
 	}
 	if !matchesRule {
-		errs = append(errs, errors.New(ID+" does not match rule "+fmt.Sprint(i)))
+		err = append(err, errors.New(field+" does not match the assigned rule"))
 	}
-	return
+
+	if len(err) > 0 {
+		return err
+	} else {
+		return nil
+	}
 }

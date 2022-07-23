@@ -62,9 +62,24 @@ func (wC *WorkflowConsumer) Start(workflow string) (string, error) {
 	return id.String(), nil
 }
 
+// Peek form structure of the current step
+func (wC WorkflowConsumer) Peek(ticket string) (*form.Form, error) {
+	id, err := uuid.Parse(ticket)
+	if err != nil {
+		return nil, errors.New("ticket is not a valid uuid")
+	}
+
+	instance, ok := wC.instances[id]
+	if !ok || instance.HasExpired() {
+		return nil, errors.New("ticket has expired or does not exist")
+	}
+
+	return wC.service.workflows[instance.workflow].steps[instance.step].form, nil
+}
+
 // Get information related to the workflow instance represented by the given ticket
 func (wC WorkflowConsumer) Get(ticket string) (form.ResponseCollection, error) {
-	id, err := uuid.FromBytes([]byte(ticket))
+	id, err := uuid.Parse(ticket)
 	if err != nil {
 		return nil, errors.New("ticket is not a valid uuid")
 	}
@@ -75,9 +90,46 @@ func (wC WorkflowConsumer) Get(ticket string) (form.ResponseCollection, error) {
 	}
 
 	instance.lastInteraction = time.Now()
-	if res, ok := instance.responsesMap[instance.step]; !ok {
-		return nil, fmt.Errorf("instance has no responses for the current step (%s)", instance.step)
-	} else {
-		return res, nil
+	wC.instances[id] = instance
+
+	form := wC.service.workflows[instance.workflow].steps[instance.step].form
+	if form != nil && len(form.Fields) > 0 {
+		if res, ok := instance.responsesMap[instance.step]; !ok {
+			return nil, fmt.Errorf("instance has no responses for the current step (%s)", instance.step)
+		} else {
+			return res, nil
+		}
 	}
+
+	return nil, nil
+}
+
+// Send responses to workflow
+func (wC WorkflowConsumer) Send(ticket string, responses form.ResponseCollection) error {
+	id, err := uuid.Parse(ticket)
+	if err != nil {
+		return errors.New("ticket is not a valid uuid")
+	}
+
+	instance, ok := wC.instances[id]
+	if !ok || instance.HasExpired() {
+		return errors.New("ticket has expired or does not exist")
+	}
+
+	instance.lastInteraction = time.Now()
+	instance.responsesMap[instance.step] = responses
+
+	// form is nil
+	err = form.ValidateResponse(responses, wC.service.workflows[instance.workflow].steps[instance.step].form)
+	if err != nil {
+		return err
+	}
+
+	var step WorkflowStep
+	if step, ok = wC.service.workflows[instance.workflow].steps[instance.step]; !ok {
+		return fmt.Errorf("step %s does not exist", instance.step)
+	}
+	instance.step = step.validate(responses)
+	wC.instances[id] = instance
+	return nil
 }

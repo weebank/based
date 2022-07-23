@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -13,35 +14,26 @@ import (
 )
 
 type Rule struct {
-	Action string                 `json:"action"`
-	Param  interface{}            `json:"param"`
-	Props  map[string]interface{} `json:"props,omitempty"`
+	Op    string                 `json:"op"`
+	Param interface{}            `json:"param"`
+	Props map[string]interface{} `json:"props,omitempty"`
 }
 
 const (
-	AND   = "and"
-	OR    = "or"
+	AND   = "&&"
+	OR    = "||"
 	EQ    = "=="
-	INEQ  = "!="
+	NEQ   = "!="
+	LT    = "<"
+	GT    = ">"
+	LTE   = "<="
+	GTE   = ">="
 	REGEX = "regex"
 )
 
-type Item struct {
-	ID    string                 `json:"id"`
-	Props map[string]interface{} `json:"props,omitempty"`
-	Rule  *Rule                  `json:"rule,omitempty"`
-}
-
-type Group struct {
-	Class string `json:"class"`
-	Items []Item `json:"items"`
-}
-
 type Form struct {
-	Name    string   `json:"name"`
-	Actions []string `json:"actions"`
-	Fields  []string `json:"fields"`
-	Layout  []Group  `json:"layout"`
+	Name  string                     `json:"name"`
+	Steps map[string]map[string]Rule `json:"steps"`
 }
 
 type FormErrors []error
@@ -54,7 +46,8 @@ func (fe FormErrors) Error() (s string) {
 	return strings.Join(str, ", ")
 }
 
-func LoadForm(path string) (raw map[string]interface{}, err error) {
+// Load form from file
+func loadForm(path string) (raw map[string]interface{}, err error) {
 	file, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -68,172 +61,117 @@ func LoadForm(path string) (raw map[string]interface{}, err error) {
 	return
 }
 
+// Load form from file and compile it
 func CompileForm(path string) (form *Form, errs FormErrors) {
-	raw, err := LoadForm(path)
+	raw, err := loadForm(path)
 	if err != nil {
 		errs = append(errs, errors.New("failed to load form: "+err.Error()))
 		return
 	}
 
-	name := strings.Split(filepath.Base(path), ".")
-	formName := strings.Join(name[:len(name)-1], "")
+	fileName := strings.Split(filepath.Base(path), ".")
+	name := strings.Join(fileName[:len(fileName)-1], "")
 
-	items, ok := raw["_items"]
-	if !ok {
-		errs = append(errs, errors.New("form \""+formName+"\" has no \"_items\" field"))
-		return
-	}
-	if ty := reflect.ValueOf(items); ty.Kind() != reflect.Slice {
-		errs = append(errs, errors.New("form \""+formName+"\" has an \"_items\" field that is not a list"))
-		return
-	}
+	form = &Form{Name: name, Steps: make(map[string]map[string]Rule)}
 
-	form = &Form{Name: formName, Actions: make([]string, 0), Fields: make([]string, 0), Layout: make([]Group, 0)}
-	group := Group{Items: make([]Item, 0)}
-	for k, i := range items.([]interface{}) {
-		v := i.(map[interface{}]interface{})
-		id, ok := v["_id"]
+	// Iterate through steps
+	for step, fields := range raw {
+		// Need to cast to general map, not map[string]interface{}
+		obj, ok := fields.(map[interface{}]interface{})
 		if !ok {
-			errs = append(errs, errors.New("item of index \""+fmt.Sprint(k)+"\" has no \"_id\" field"))
+			errs = append(errs, errors.New("step \""+fmt.Sprint(step)+"\" is not a valid field map"))
 			continue
 		}
-		if _, ok := id.(string); !ok {
-			errs = append(errs, errors.New("item of index \""+fmt.Sprint(k)+"\" has an \"_id\" field that is not a string"))
-		}
-
-		key := id.(string)
-		item := Item{ID: key, Props: make(map[string]interface{})}
-
-		cl, ok := v["_class"]
-		if !ok {
-			errs = append(errs, errors.New("item \""+key+"\" has no \"_class\" field"))
-			continue
-		}
-		if _, ok := cl.(string); !ok {
-			errs = append(errs, errors.New("item \""+key+"\" has an \"_class\" field that is not a string"))
-		}
-		class := cl.(string)
-
-		if ty, ok := v["_type"]; ok {
-			if _, ok := ty.(string); ok {
-				switch ty {
-				case "none":
-				case "action":
-					form.Actions = append(form.Actions, key)
-				case "field":
-					form.Fields = append(form.Fields, key)
-				default:
-					errs = append(errs, errors.New("item \""+key+"\" has an unknown \"_type\": "+ty.(string)))
-				}
-			} else {
-				errs = append(errs, errors.New("item \""+key+"\" has a \"_type\" field that is not a string"))
-				continue
+		for field, rule := range obj {
+			// It's safe to assume that "field" is a string, otherwise the JSON would be invalid
+			name := field.(string)
+			compiledRule, err := compileRule(rule, step, name)
+			if err == nil {
+				form.Steps[step][name] = compiledRule
 			}
 		}
-
-		if rule, ok := v["_rule"]; ok {
-			r := new(Rule)
-			rule, ruleErrs := compileRule(rule, key, 0)
-			*r = rule
-
-			if len(ruleErrs) > 0 {
-				errs = append(errs, ruleErrs)
-			}
-
-			item.Rule = r
-		}
-
-		for k, p := range v {
-			if !strings.HasPrefix(k.(string), "_") {
-				item.Props[k.(string)] = p
-			}
-		}
-
-		if group.Class == "" {
-			group.Class = class
-		}
-		if group.Class == class {
-			group.Items = append(group.Items, item)
-		} else {
-			form.Layout = append(form.Layout, group)
-			group = Group{Class: class, Items: []Item{item}}
-
-		}
-	}
-
-	if group.Class != "" {
-		form.Layout = append(form.Layout, group)
 	}
 
 	return
 }
 
-func compileRule(ruleObj interface{}, key string, i int) (r Rule, errs FormErrors) {
-	rule, ok := ruleObj.(map[interface{}]interface{})
+// Compile and validate a rule
+func compileRule(obj interface{}, step, name string) (rule Rule, errs FormErrors) {
+	// Check if rule is a map
+	r, ok := obj.(map[interface{}]interface{})
 	if !ok {
-		errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") that is not an object"))
+		errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\" is not a valid rule"))
 		return
 	}
 
-	action, ok := rule["_action"]
+	// Check if rule has an "op" field
+	op, ok := r["op"]
 	if !ok {
-		errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") that has no \"_action\" field"))
+		errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\" has no \"op\" field"))
 		return
-	} else if _, ok := action.(string); !ok {
-		errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" field is not a string"))
+	} else if _, ok := op.(string); !ok {
+		errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\"has a \"op\" field that is not a string"))
 		return
 	}
 
-	param, ok := rule["_param"]
+	// Check if rule has a "param" field
+	param, ok := r["param"]
 	if !ok {
-		errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") that has no \"_param\" field"))
+		errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\" has no \"param\" field"))
 		return
 	}
 
-	r = Rule{Action: action.(string), Props: map[string]interface{}{}}
-	switch action {
+	// Build rule
+	rule = Rule{Op: op.(string), Props: map[string]interface{}{}}
+	switch op {
 	case AND, OR:
 		if ty := reflect.ValueOf(param); ty.Kind() != reflect.Slice {
-			errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" field demands a list parameter, but \"_param\" field is not a list"))
+			errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\" has an \"op\" field that demands a list parameter, but \"param\" field is not a list"))
 			return
 		}
 		rules := []Rule{}
-		for i, rule := range param.([]interface{}) {
-			r, ruleErrs := compileRule(rule, key, i)
-			if len(ruleErrs) > 0 {
-				errs = append(errs, ruleErrs)
+		for _, rule := range param.([]interface{}) {
+			r, ruleErr := compileRule(rule, step, name)
+			if ruleErr != nil {
+				errs = append(errs, ruleErr)
 			}
 			rules = append(rules, r)
 		}
-		r.Param = rules
-	case EQ, INEQ, REGEX:
-		if _, ok := param.(string); !ok {
-			errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" field demands a string parameter, but \"_param\" field is not a string"))
+		rule.Param = rules
+	case EQ, NEQ, GT, GTE, LT, LTE:
+		if _, ok := param.(float64); !ok {
+			errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\" has an \"op\" field that demands a number parameter, but \"param\" field is not a number"))
 			return
 		}
-		r.Param = param
-		if action != REGEX {
-			break
+
+		rule.Param = param
+	case REGEX:
+		if _, ok := param.(string); !ok {
+			errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\" has an \"op\" field that demands a string parameter, but \"param\" field is not a string"))
+			return
 		}
+
+		rule.Param = param
 
 		_, err := regexp.Compile(param.(string))
 		if err != nil {
-			fmt.Println(err)
-			errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") whose \"_action\" is \"regex\" but its \"_param\" is not a valid regex"))
+			log.Println(err)
+			errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\" has an \"op\" field that demands a regex parameter, but \"param\" field is not a valid regex"))
 			return
 		}
 	default:
-		errs = append(errs, errors.New("item \""+key+"\" has a rule ("+fmt.Sprint(i)+") has an unknown \"_action\": "+action.(string)))
+		errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\" has an unknown \"op\": "+op.(string)))
 		return
 	}
 
-	for k, v := range rule {
+	// Add custom props
+	for k, v := range r {
 		key, ok := k.(string)
 		if !ok {
 			continue
 		}
 		if !strings.HasPrefix(key, "_") {
-			r.Props[key] = v
+			rule.Props[key] = v
 		}
 	}
 	return
