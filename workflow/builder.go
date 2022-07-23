@@ -51,12 +51,12 @@ func (wS *WorkflowService) NewWorkflow(name string) WorkflowBuilder {
 
 // Workflow step
 type WorkflowStep struct {
-	form     *form.Form
-	validate func(responses form.ResponseCollection) string
+	form       *form.Form
+	onInteract func(responses form.ResponseCollection) string
 }
 
 // Add step to build workflow
-func (w WorkflowBuilder) AddStep(name string, validate func(responses form.ResponseCollection) string) error {
+func (w WorkflowBuilder) AddStep(name string, onInteract func(responses form.ResponseCollection) (next string)) error {
 	// Check workflow
 	workflow, ok := w.service.Workflow(w.workflow)
 	if !ok {
@@ -70,7 +70,7 @@ func (w WorkflowBuilder) AddStep(name string, validate func(responses form.Respo
 
 	// Build step
 	step := WorkflowStep{
-		validate: validate,
+		onInteract: onInteract,
 	}
 
 	// Compile form (if needed)

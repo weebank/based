@@ -92,44 +92,45 @@ func (wC WorkflowConsumer) Get(ticket string) (form.ResponseCollection, error) {
 	instance.lastInteraction = time.Now()
 	wC.instances[id] = instance
 
-	form := wC.service.workflows[instance.workflow].steps[instance.step].form
-	if form != nil && len(form.Fields) > 0 {
-		if res, ok := instance.responsesMap[instance.step]; !ok {
-			return nil, fmt.Errorf("instance has no responses for the current step (%s)", instance.step)
-		} else {
-			return res, nil
-		}
+	if res, ok := instance.responsesMap[instance.step]; !ok {
+		return nil, fmt.Errorf("instance has no responses for the current step (%s)", instance.step)
+	} else {
+		return res, nil
 	}
-
-	return nil, nil
 }
 
 // Send responses to workflow
-func (wC WorkflowConsumer) Send(ticket string, responses form.ResponseCollection) error {
-	id, err := uuid.Parse(ticket)
+func (wC WorkflowConsumer) Interact(ticket string, responses form.ResponseCollection) (finished bool, err error) {
+	var id uuid.UUID
+	id, err = uuid.Parse(ticket)
 	if err != nil {
-		return errors.New("ticket is not a valid uuid")
+		return false, errors.New("ticket is not a valid uuid")
 	}
 
 	instance, ok := wC.instances[id]
 	if !ok || instance.HasExpired() {
-		return errors.New("ticket has expired or does not exist")
+		return false, errors.New("ticket has expired or does not exist")
 	}
 
 	instance.lastInteraction = time.Now()
 	instance.responsesMap[instance.step] = responses
 
-	// form is nil
-	err = form.ValidateResponse(responses, wC.service.workflows[instance.workflow].steps[instance.step].form)
+	err = form.ValidateResponse(wC.service.workflows[instance.workflow].steps[instance.step].form, instance.step, responses)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	var step WorkflowStep
 	if step, ok = wC.service.workflows[instance.workflow].steps[instance.step]; !ok {
-		return fmt.Errorf("step %s does not exist", instance.step)
+		return false, fmt.Errorf("step %s does not exist", instance.step)
 	}
-	instance.step = step.validate(responses)
-	wC.instances[id] = instance
-	return nil
+
+	instance.step = step.onInteract(responses)
+	if instance.step == "" {
+		delete(wC.instances, id)
+		return true, nil
+	} else {
+		wC.instances[id] = instance
+		return false, nil
+	}
 }
