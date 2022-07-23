@@ -2,6 +2,8 @@ package workflow
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/weebank/based/form"
@@ -23,9 +25,12 @@ type WorkflowService struct {
 
 // Workflow service constructor
 func NewService(baseDir string) WorkflowService {
+	currDir, _ := os.Getwd()
 	return WorkflowService{
-		baseDir:   baseDir,
+		baseDir:   filepath.Join(currDir, baseDir),
 		workflows: make(map[string]Workflow),
+
+		ticketLifetime: time.Hour * 12,
 	}
 }
 
@@ -47,11 +52,11 @@ func (wS *WorkflowService) NewWorkflow(name string) WorkflowBuilder {
 // Workflow step
 type WorkflowStep struct {
 	form     *form.Form
-	validate func(responses form.ResponseCollection, isFormValid bool) string
+	validate func(responses form.ResponseCollection) string
 }
 
 // Add step to build workflow
-func (w WorkflowBuilder) AddStep(name string, hasForm bool, validate func(responses form.ResponseCollection, isFormValid bool) string) error {
+func (w WorkflowBuilder) AddStep(name string, validate func(responses form.ResponseCollection) string) error {
 	// Check workflow
 	workflow, ok := w.service.Workflow(w.workflow)
 	if !ok {
@@ -64,14 +69,14 @@ func (w WorkflowBuilder) AddStep(name string, hasForm bool, validate func(respon
 	}
 
 	// Build step
-	step := WorkflowStep{}
+	step := WorkflowStep{
+		validate: validate,
+	}
 
 	// Compile form (if needed)
-	if hasForm {
-		var errs form.FormErrors
-		if step.form, errs = form.CompileForm(w.service.baseDir); len(errs) > 0 {
-			return errs
-		}
+	var err form.FormErrors
+	if step.form, err = form.CompileForm(filepath.Join(w.service.baseDir, w.workflow, name+".yml")); err != nil {
+		return err
 	}
 
 	// Add step
