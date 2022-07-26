@@ -13,6 +13,7 @@ import (
 type Workflow struct {
 	initialStep string
 	steps       map[string]WorkflowStep
+	form        *form.Form
 }
 
 // Workflow service (holds all workflows and rules)
@@ -41,24 +42,31 @@ type WorkflowBuilder struct {
 }
 
 // Create new workflow and add it to the service
-func (wS *WorkflowService) NewWorkflow(name string) WorkflowBuilder {
-	wS.workflows[name] = Workflow{
-		steps: make(map[string]WorkflowStep),
+func (wS *WorkflowService) NewWorkflow(name string) (*WorkflowBuilder, form.FormErrors) {
+	// Compile form
+	form, err := form.CompileForm(filepath.Join(wS.baseDir, name+".yaml"))
+	if err != nil {
+		return nil, err
 	}
 
-	return WorkflowBuilder{wS, name}
+	// Create workflow
+	wS.workflows[name] = Workflow{
+		steps: make(map[string]WorkflowStep),
+		form:  form,
+	}
+
+	return &WorkflowBuilder{wS, name}, nil
 }
 
 // Workflow step
 type WorkflowStep struct {
-	form       *form.Form
 	onInteract func(responses form.ResponseCollection) string
 }
 
 // Add step to build workflow
 func (w WorkflowBuilder) AddStep(name string, onInteract func(responses form.ResponseCollection) (next string)) error {
 	// Check workflow
-	workflow, ok := w.service.Workflow(w.workflow)
+	workflow, ok := w.service.workflows[w.workflow]
 	if !ok {
 		return errors.New("workflow does not exist")
 	}
@@ -71,12 +79,6 @@ func (w WorkflowBuilder) AddStep(name string, onInteract func(responses form.Res
 	// Build step
 	step := WorkflowStep{
 		onInteract: onInteract,
-	}
-
-	// Compile form (if needed)
-	var err form.FormErrors
-	if step.form, err = form.CompileForm(filepath.Join(w.service.baseDir, w.workflow, name+".yml")); err != nil {
-		return err
 	}
 
 	// Add step

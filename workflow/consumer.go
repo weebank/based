@@ -46,7 +46,7 @@ func (wS *WorkflowService) NewConsumer() WorkflowConsumer {
 
 // Start a workflow
 func (wC *WorkflowConsumer) Start(workflow string) (string, error) {
-	if _, ok := wC.service.Workflow(workflow); !ok {
+	if _, ok := wC.service.workflows[workflow]; !ok {
 		return uuid.Nil.String(), errors.New("workflow does not exist")
 	}
 
@@ -63,7 +63,7 @@ func (wC *WorkflowConsumer) Start(workflow string) (string, error) {
 }
 
 // Peek form structure of the current step
-func (wC WorkflowConsumer) Peek(ticket string) (*form.Form, error) {
+func (wC WorkflowConsumer) Peek(ticket string) (map[string]form.Rule, error) {
 	id, err := uuid.Parse(ticket)
 	if err != nil {
 		return nil, errors.New("ticket is not a valid uuid")
@@ -74,7 +74,7 @@ func (wC WorkflowConsumer) Peek(ticket string) (*form.Form, error) {
 		return nil, errors.New("ticket has expired or does not exist")
 	}
 
-	return wC.service.workflows[instance.workflow].steps[instance.step].form, nil
+	return wC.service.workflows[instance.workflow].form.Steps[instance.step], nil
 }
 
 // Get information related to the workflow instance represented by the given ticket
@@ -101,8 +101,7 @@ func (wC WorkflowConsumer) Get(ticket string) (form.ResponseCollection, error) {
 
 // Send responses to workflow
 func (wC WorkflowConsumer) Interact(ticket string, responses form.ResponseCollection) (finished bool, err error) {
-	var id uuid.UUID
-	id, err = uuid.Parse(ticket)
+	id, err := uuid.Parse(ticket)
 	if err != nil {
 		return false, errors.New("ticket is not a valid uuid")
 	}
@@ -115,9 +114,9 @@ func (wC WorkflowConsumer) Interact(ticket string, responses form.ResponseCollec
 	instance.lastInteraction = time.Now()
 	instance.responsesMap[instance.step] = responses
 
-	err = form.ValidateResponse(wC.service.workflows[instance.workflow].steps[instance.step].form, instance.step, responses)
-	if err != nil {
-		return false, err
+	respErr := form.ValidateResponse(wC.service.workflows[instance.workflow].form, instance.step, responses)
+	if respErr != nil {
+		return false, respErr
 	}
 
 	var step WorkflowStep

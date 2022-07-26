@@ -87,6 +87,7 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 			name := field.(string)
 			compiledRule, err := compileRule(rule, step, name)
 			if err == nil {
+				form.Steps[step] = make(map[string]Rule)
 				form.Steps[step][name] = compiledRule
 			}
 		}
