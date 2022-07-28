@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/weebank/josuke/form"
+	"github.com/weebank/dio/form"
 )
 
 // Workflow consumer (holds all instances)

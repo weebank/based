@@ -1,4 +1,4 @@
-module github.com/weebank/josuke
+module github.com/weebank/dio
 
 go 1.16
 
