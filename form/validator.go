@@ -27,9 +27,9 @@ func SanitizeResponse(form *Form, step string, resps *ResponseCollection) {
 	}
 }
 
-func ValidateResponse(form *Form, step string, resps *ResponseCollection) (err ResponseErrors) {
+func ValidateResponse(form *Form, step string, resps ResponseCollection) (err ResponseErrors) {
 	for field, rule := range form.Steps[step] {
-		resp, ok := (*resps)[field]
+		resp, ok := resps[field]
 		if !ok {
 			err = append(err, errors.New(field+" has no matching response field"))
 			continue

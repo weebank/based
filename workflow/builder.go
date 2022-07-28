@@ -13,6 +13,7 @@ import (
 type Workflow struct {
 	initialStep string
 	steps       map[string]WorkflowStep
+	form        *form.Form
 }
 
 // Workflow service (holds all workflows and rules)
@@ -41,26 +42,43 @@ type WorkflowBuilder struct {
 }
 
 // Create new workflow and add it to the service
-func (wS *WorkflowService) NewWorkflow(name string) WorkflowBuilder {
-	wS.workflows[name] = Workflow{
-		steps: make(map[string]WorkflowStep),
+func (wS *WorkflowService) NewWorkflow(name string) (*WorkflowBuilder, form.FormErrors) {
+	// Compile form
+	form, err := form.CompileForm(filepath.Join(wS.baseDir, name+".yaml"))
+	if err != nil {
+		return nil, err
 	}
 
-	return WorkflowBuilder{wS, name}
+	// Create workflow
+	wS.workflows[name] = Workflow{
+		steps: make(map[string]WorkflowStep),
+		form:  form,
+	}
+
+	return &WorkflowBuilder{wS, name}, nil
 }
 
 // Workflow step
 type WorkflowStep struct {
-	form     *form.Form
-	validate func(responses form.ResponseCollection) string
+	onInteract func(responses form.ResponseCollection) (next string)
+	onRewind   func() (prev string)
 }
 
 // Add step to build workflow
-func (w WorkflowBuilder) AddStep(name string, validate func(responses form.ResponseCollection) string) error {
+func (w WorkflowBuilder) AddStep(
+	name string,
+	onInteract func(responses form.ResponseCollection) (next string),
+	onRewind func() (prev string),
+) error {
 	// Check workflow
-	workflow, ok := w.service.Workflow(w.workflow)
+	workflow, ok := w.service.workflows[w.workflow]
 	if !ok {
 		return errors.New("workflow does not exist")
+	}
+
+	// Check onInteract
+	if onInteract == nil {
+		return errors.New("onInteract is nil")
 	}
 
 	// Add initial step (if needed)
@@ -70,13 +88,8 @@ func (w WorkflowBuilder) AddStep(name string, validate func(responses form.Respo
 
 	// Build step
 	step := WorkflowStep{
-		validate: validate,
-	}
-
-	// Compile form (if needed)
-	var err form.FormErrors
-	if step.form, err = form.CompileForm(filepath.Join(w.service.baseDir, w.workflow, name+".yml")); err != nil {
-		return err
+		onInteract: onInteract,
+		onRewind:   onRewind,
 	}
 
 	// Add step

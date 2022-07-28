@@ -45,8 +45,8 @@ func (wS *WorkflowService) NewConsumer() WorkflowConsumer {
 }
 
 // Start a workflow
-func (wC *WorkflowConsumer) Start(workflow string) (string, error) {
-	if _, ok := wC.service.Workflow(workflow); !ok {
+func (wC *WorkflowConsumer) Start(workflow string) (ticket string, err error) {
+	if _, ok := wC.service.workflows[workflow]; !ok {
 		return uuid.Nil.String(), errors.New("workflow does not exist")
 	}
 
@@ -63,22 +63,25 @@ func (wC *WorkflowConsumer) Start(workflow string) (string, error) {
 }
 
 // Peek form structure of the current step
-func (wC WorkflowConsumer) Peek(ticket string) (*form.Form, error) {
+func (wC WorkflowConsumer) Peek(ticket string) (form map[string]form.Rule, rewindable bool, step string, err error) {
 	id, err := uuid.Parse(ticket)
 	if err != nil {
-		return nil, errors.New("ticket is not a valid uuid")
+		return nil, false, "", errors.New("ticket is not a valid uuid")
 	}
 
 	instance, ok := wC.instances[id]
 	if !ok || instance.HasExpired() {
-		return nil, errors.New("ticket has expired or does not exist")
+		return nil, false, "", errors.New("ticket has expired or does not exist")
 	}
 
-	return wC.service.workflows[instance.workflow].steps[instance.step].form, nil
+	return wC.service.workflows[instance.workflow].form.Steps[instance.step],
+		wC.service.workflows[instance.workflow].steps[instance.step].onRewind != nil,
+		instance.step,
+		nil
 }
 
 // Get information related to the workflow instance represented by the given ticket
-func (wC WorkflowConsumer) Get(ticket string) (form.ResponseCollection, error) {
+func (wC WorkflowConsumer) Get(ticket string) (responses form.ResponseCollection, err error) {
 	id, err := uuid.Parse(ticket)
 	if err != nil {
 		return nil, errors.New("ticket is not a valid uuid")
@@ -92,20 +95,50 @@ func (wC WorkflowConsumer) Get(ticket string) (form.ResponseCollection, error) {
 	instance.lastInteraction = time.Now()
 	wC.instances[id] = instance
 
-	form := wC.service.workflows[instance.workflow].steps[instance.step].form
-	if form != nil && len(form.Fields) > 0 {
-		if res, ok := instance.responsesMap[instance.step]; !ok {
-			return nil, fmt.Errorf("instance has no responses for the current step (%s)", instance.step)
-		} else {
-			return res, nil
-		}
+	if responses, ok := instance.responsesMap[instance.step]; !ok {
+		return make(form.ResponseCollection), nil
+	} else {
+		return responses, nil
 	}
-
-	return nil, nil
 }
 
 // Send responses to workflow
-func (wC WorkflowConsumer) Send(ticket string, responses form.ResponseCollection) error {
+func (wC WorkflowConsumer) Interact(ticket string, responses form.ResponseCollection) (finished bool, err error) {
+	id, err := uuid.Parse(ticket)
+	if err != nil {
+		return false, errors.New("ticket is not a valid uuid")
+	}
+
+	instance, ok := wC.instances[id]
+	if !ok || instance.HasExpired() {
+		return false, errors.New("ticket has expired or does not exist")
+	}
+
+	if instance.step == "" {
+		return true, nil
+	}
+
+	instance.lastInteraction = time.Now()
+	instance.responsesMap[instance.step] = responses
+
+	respErr := form.ValidateResponse(wC.service.workflows[instance.workflow].form, instance.step, responses)
+	if respErr != nil {
+		return false, respErr
+	}
+
+	var step WorkflowStep
+	if step, ok = wC.service.workflows[instance.workflow].steps[instance.step]; !ok {
+		return false, fmt.Errorf("step %s does not exist", instance.step)
+	}
+
+	instance.step = step.onInteract(responses)
+	wC.instances[id] = instance
+
+	return instance.step == "", nil
+}
+
+// Send responses to workflow
+func (wC WorkflowConsumer) Rewind(ticket string) error {
 	id, err := uuid.Parse(ticket)
 	if err != nil {
 		return errors.New("ticket is not a valid uuid")
@@ -117,19 +150,17 @@ func (wC WorkflowConsumer) Send(ticket string, responses form.ResponseCollection
 	}
 
 	instance.lastInteraction = time.Now()
-	instance.responsesMap[instance.step] = responses
-
-	// form is nil
-	err = form.ValidateResponse(responses, wC.service.workflows[instance.workflow].steps[instance.step].form)
-	if err != nil {
-		return err
-	}
 
 	var step WorkflowStep
 	if step, ok = wC.service.workflows[instance.workflow].steps[instance.step]; !ok {
 		return fmt.Errorf("step %s does not exist", instance.step)
 	}
-	instance.step = step.validate(responses)
+
+	if step.onRewind == nil {
+		return errors.New("step is not rewindable")
+	}
+
+	instance.step = step.onRewind()
 	wC.instances[id] = instance
 	return nil
 }
