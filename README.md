@@ -1,6 +1,6 @@
 # based
 
-# ‼️ **THIS DOCUMENTATION IS DEPRECATED. DO NOT USE IT.** We are working to update it ‼️
+# ‼️ **THIS DOCUMENTATION IS DEPRECATED. DO NOT USE IT.** We are working on updating it ‼️
 
 Let's set up a simple dynamic form example.
 First, create the YAML file that will contain the form components and layout. We'll replicate the following example:
