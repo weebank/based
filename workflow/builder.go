@@ -60,15 +60,25 @@ func (wS *WorkflowService) NewWorkflow(name string) (*WorkflowBuilder, form.Form
 
 // Workflow step
 type WorkflowStep struct {
-	onInteract func(responses form.ResponseCollection) string
+	onInteract func(responses form.ResponseCollection) (next string)
+	onRewind   func() (prev string)
 }
 
 // Add step to build workflow
-func (w WorkflowBuilder) AddStep(name string, onInteract func(responses form.ResponseCollection) (next string)) error {
+func (w WorkflowBuilder) AddStep(
+	name string,
+	onInteract func(responses form.ResponseCollection) (next string),
+	onRewind func() (prev string),
+) error {
 	// Check workflow
 	workflow, ok := w.service.workflows[w.workflow]
 	if !ok {
 		return errors.New("workflow does not exist")
+	}
+
+	// Check onInteract
+	if onInteract == nil {
+		return errors.New("onInteract is nil")
 	}
 
 	// Add initial step (if needed)
@@ -79,6 +89,7 @@ func (w WorkflowBuilder) AddStep(name string, onInteract func(responses form.Res
 	// Build step
 	step := WorkflowStep{
 		onInteract: onInteract,
+		onRewind:   onRewind,
 	}
 
 	// Add step

@@ -82,12 +82,14 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 			errs = append(errs, errors.New("step \""+fmt.Sprint(step)+"\" is not a valid field map"))
 			continue
 		}
+
+		form.Steps[step] = make(map[string]Rule)
+
 		for field, rule := range obj {
 			// It's safe to assume that "field" is a string, otherwise the JSON would be invalid
 			name := field.(string)
 			compiledRule, err := compileRule(rule, step, name)
 			if err == nil {
-				form.Steps[step] = make(map[string]Rule)
 				form.Steps[step][name] = compiledRule
 			}
 		}
@@ -171,7 +173,9 @@ func compileRule(obj interface{}, step, name string) (rule Rule, errs FormErrors
 		if !ok {
 			continue
 		}
-		if !strings.HasPrefix(key, "_") {
+		switch key {
+		case "op", "param":
+		default:
 			rule.Props[key] = v
 		}
 	}
