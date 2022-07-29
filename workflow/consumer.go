@@ -24,8 +24,14 @@ type WorkflowInstance struct {
 	responsesMap    map[string]form.ResponseCollection
 }
 
+// Last interaction getter
 func (wI WorkflowInstance) LastInteraction() time.Time {
 	return wI.lastInteraction
+}
+
+// Update last interaction
+func (wI *WorkflowInstance) Refresh() {
+	wI.lastInteraction = time.Now()
 }
 
 func (wI WorkflowInstance) Responses() form.ResponseCollection {
@@ -43,7 +49,7 @@ func (wI WorkflowInstance) Responses() form.ResponseCollection {
 }
 
 func (wI WorkflowInstance) HasExpired() bool {
-	return time.Since(wI.lastInteraction) > wI.consumer.service.ticketLifetime
+	return time.Since(wI.LastInteraction()) > wI.consumer.service.ticketLifetime
 }
 
 // Workflow service constructor
@@ -109,7 +115,7 @@ func (wC WorkflowConsumer) Get(ticket string) (responses form.ResponseCollection
 	}
 
 	// Update timestamp
-	instance.lastInteraction = time.Now()
+	instance.Refresh()
 	wC.instances[id] = instance
 
 	// Return responses
@@ -140,7 +146,7 @@ func (wC WorkflowConsumer) Interact(ticket string, responses form.ResponseCollec
 	}
 
 	// Update timestamp
-	instance.lastInteraction = time.Now()
+	instance.Refresh()
 	wC.instances[id] = instance
 
 	// Check step
@@ -182,7 +188,7 @@ func (wC WorkflowConsumer) Rewind(ticket string) error {
 	}
 
 	// Update timestamp
-	instance.lastInteraction = time.Now()
+	instance.Refresh()
 	wC.instances[id] = instance
 
 	// Check step
