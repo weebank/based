@@ -63,7 +63,7 @@ func (wC *WorkflowConsumer) Start(workflow string) (ticket string, err error) {
 }
 
 // Peek form structure of the current step
-func (wC WorkflowConsumer) Peek(ticket string) (form map[string]form.Rule, rewindable bool, step string, err error) {
+func (wC WorkflowConsumer) Peek(ticket string) (form map[string]form.Field, rewindable bool, step string, err error) {
 	id, err := uuid.Parse(ticket)
 	if err != nil {
 		return nil, false, "", errors.New("ticket is not a valid uuid")

@@ -13,6 +13,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type Field struct {
+	Sensitive bool `json:"sensitive"`
+	Rule      Rule `json:"rule"`
+}
+
 type Rule struct {
 	Op    string                 `json:"op"`
 	Param interface{}            `json:"param"`
@@ -32,8 +37,8 @@ const (
 )
 
 type Form struct {
-	Name  string                     `json:"name"`
-	Steps map[string]map[string]Rule `json:"steps"`
+	Name  string                      `json:"name"`
+	Steps map[string]map[string]Field `json:"steps"`
 }
 
 type FormErrors []error
@@ -72,7 +77,7 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 	fileName := strings.Split(filepath.Base(path), ".")
 	name := strings.Join(fileName[:len(fileName)-1], "")
 
-	form = &Form{Name: name, Steps: make(map[string]map[string]Rule)}
+	form = &Form{Name: name, Steps: make(map[string]map[string]Field)}
 
 	// Iterate through steps
 	for step, fields := range raw {
@@ -83,15 +88,44 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 			continue
 		}
 
-		form.Steps[step] = make(map[string]Rule)
+		form.Steps[step] = make(map[string]Field)
 
-		for field, rule := range obj {
-			// It's safe to assume that "field" is a string, otherwise the JSON would be invalid
-			name := field.(string)
-			compiledRule, err := compileRule(rule, step, name)
-			if err == nil {
-				form.Steps[step][name] = compiledRule
+		for name, field := range obj {
+			// It's safe to assume that "name" is a string, otherwise the JSON would be invalid
+			str := name.(string)
+
+			// Check if field is a map
+			f, ok := field.(map[interface{}]interface{})
+			if !ok {
+				errs = append(errs, errors.New("field \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\" is not a valid field object"))
+				continue
 			}
+
+			// Field struct
+			var newField Field
+
+			// Check if field has a "hidden" property
+			if hidden, ok := f["hidden"]; ok {
+				isHidden, ok := hidden.(bool)
+				if !ok {
+					errs = append(errs, errors.New("field \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\"has a \"hidden\" field that is not a boolean"))
+					continue
+				}
+				newField.Sensitive = isHidden
+			}
+
+			// Check if field has a "rule" property
+			if rule, ok := f["rule"]; ok {
+				compiledRule, err := compileRule(rule, step, str)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+				newField.Rule = compiledRule
+			}
+
+			// Add field to form
+			form.Steps[step][str] = newField
 		}
 	}
 
@@ -107,17 +141,17 @@ func compileRule(obj interface{}, step, name string) (rule Rule, errs FormErrors
 		return
 	}
 
-	// Check if rule has an "op" field
+	// Check if rule has an "op" property
 	op, ok := r["op"]
 	if !ok {
 		errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\" has no \"op\" field"))
 		return
 	} else if _, ok := op.(string); !ok {
-		errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\"has a \"op\" field that is not a string"))
+		errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\"has an \"op\" field that is not a string"))
 		return
 	}
 
-	// Check if rule has a "param" field
+	// Check if rule has a "param" property
 	param, ok := r["param"]
 	if !ok {
 		errs = append(errs, errors.New("rule \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\" has no \"param\" field"))

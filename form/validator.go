@@ -28,14 +28,14 @@ func SanitizeResponse(form *Form, step string, resps *ResponseCollection) {
 }
 
 func ValidateResponse(form *Form, step string, resps ResponseCollection) (err ResponseErrors) {
-	for field, rule := range form.Steps[step] {
-		resp, ok := resps[field]
+	for name, field := range form.Steps[step] {
+		resp, ok := resps[name]
 		if !ok {
-			err = append(err, errors.New(field+" has no matching response field"))
+			err = append(err, errors.New(name+" has no matching response field"))
 			continue
 		}
 
-		ruleErr := ValidateRule(field, rule, resp)
+		ruleErr := ValidateRule(name, field.Rule, resp)
 		if ruleErr != nil {
 			err = append(err, ruleErr)
 		}
