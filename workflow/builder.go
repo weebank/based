@@ -21,7 +21,7 @@ type WorkflowService struct {
 	baseDir   string
 	workflows map[string]Workflow
 
-	ticketLifetime time.Duration
+	lifetime time.Duration
 }
 
 // Workflow service constructor
@@ -31,7 +31,7 @@ func NewService(baseDir string) WorkflowService {
 		baseDir:   filepath.Join(currDir, baseDir),
 		workflows: make(map[string]Workflow),
 
-		ticketLifetime: time.Hour * 12,
+		lifetime: time.Hour * 12,
 	}
 }
 
