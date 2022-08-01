@@ -203,14 +203,14 @@ func compileRule(obj interface{}, step, name string) (rule Rule, errs FormErrors
 
 	// Add custom props
 	for k, v := range r {
-		key, ok := k.(string)
+		prop, ok := k.(string)
 		if !ok {
 			continue
 		}
-		switch key {
+		switch prop {
 		case "op", "param":
 		default:
-			rule.Props[key] = v
+			rule.Props[prop] = v
 		}
 	}
 	return
