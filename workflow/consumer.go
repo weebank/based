@@ -35,7 +35,7 @@ func (wI *WorkflowInstance) Refresh() {
 
 // Get user responses for current step
 func (wI WorkflowInstance) Responses() form.ResponseCollection {
-	if resps, ok := wI.responsesMap[wI.step]; ok {
+	if resps, ok := wI.responsesMap[wI.step]; !ok {
 		return nil
 	} else {
 		publicResps := make(form.ResponseCollection)
