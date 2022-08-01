@@ -62,10 +62,10 @@ func (wS *WorkflowService) NewConsumer() WorkflowConsumer {
 }
 
 // Start a workflow
-func (wC *WorkflowConsumer) Start(key string, workflow string) (string, error) {
+func (wC *WorkflowConsumer) Start(key string, workflow string) error {
 	// Check workflow
 	if _, ok := wC.service.workflows[workflow]; !ok {
-		return "", errors.New("workflow does not exist")
+		return errors.New("workflow does not exist")
 	}
 
 	// Check if instance has not been created yet
@@ -80,7 +80,7 @@ func (wC *WorkflowConsumer) Start(key string, workflow string) (string, error) {
 		}
 	}
 
-	return wC.instances[key].step, nil
+	return nil
 }
 
 // Peek form structure of the current step
