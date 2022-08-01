@@ -14,7 +14,7 @@ import (
 )
 
 type Field struct {
-	Hidden bool `json:"hidden"`
+	Hidden bool `json:"hidden,omitempty"`
 	Rule   Rule `json:"rule"`
 }
 
