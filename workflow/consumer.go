@@ -40,7 +40,7 @@ func (wI WorkflowInstance) Responses() form.ResponseCollection {
 	} else {
 		publicResps := make(form.ResponseCollection)
 		for name, response := range resps {
-			if !wI.consumer.service.workflows[wI.workflow].form.Steps[wI.step][name].Sensitive {
+			if !wI.consumer.service.workflows[wI.workflow].form.Steps[wI.step][name].Hidden {
 				publicResps[name] = response
 			}
 		}

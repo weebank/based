@@ -14,8 +14,8 @@ import (
 )
 
 type Field struct {
-	Sensitive bool `json:"sensitive"`
-	Rule      Rule `json:"rule"`
+	Hidden bool `json:"hidden"`
+	Rule   Rule `json:"rule"`
 }
 
 type Rule struct {
@@ -111,7 +111,7 @@ func CompileForm(path string) (form *Form, errs FormErrors) {
 					errs = append(errs, errors.New("field \""+fmt.Sprint(name)+"\" from step \""+fmt.Sprint(step)+"\"has a \"hidden\" field that is not a boolean"))
 					continue
 				}
-				newField.Sensitive = isHidden
+				newField.Hidden = isHidden
 			}
 
 			// Check if field has a "rule" property
