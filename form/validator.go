@@ -19,23 +19,23 @@ func (re ResponseErrors) Error() (s string) {
 	return strings.Join(str, ", ")
 }
 
-func SanitizeResponse(form *Form, step string, resps *ResponseCollection) {
-	for field := range *resps {
+func SanitizeResponse(form *Form, step string, responses *ResponseCollection) {
+	for field := range *responses {
 		if _, ok := form.Steps[step][field]; !ok {
-			delete(*resps, field)
+			delete(*responses, field)
 		}
 	}
 }
 
-func ValidateResponse(form *Form, step string, resps ResponseCollection) (err ResponseErrors) {
+func ValidateResponse(form *Form, step string, responses ResponseCollection) (err ResponseErrors) {
 	for name, field := range form.Steps[step] {
-		resp, ok := resps[name]
+		response, ok := responses[name]
 		if !ok {
 			err = append(err, errors.New(name+" has no matching response field"))
 			continue
 		}
 
-		ruleErr := ValidateRule(name, field.Rule, resp)
+		ruleErr := ValidateRule(name, field.Rule, response)
 		if ruleErr != nil {
 			err = append(err, ruleErr)
 		}
@@ -48,13 +48,13 @@ func ValidateResponse(form *Form, step string, resps ResponseCollection) (err Re
 	}
 }
 
-func ValidateRule(field string, rule Rule, resp string) (err ResponseErrors) {
+func ValidateRule(field string, rule Rule, response string) (err ResponseErrors) {
 	var matchesRule bool
 	switch rule.Op {
 	case OR:
 		matchesRule = false
 		for _, r := range rule.Param.([]Rule) {
-			ruleErr := ValidateRule(field, r, resp)
+			ruleErr := ValidateRule(field, r, response)
 			if ruleErr == nil {
 				matchesRule = true
 				break
@@ -65,7 +65,7 @@ func ValidateRule(field string, rule Rule, resp string) (err ResponseErrors) {
 	case AND:
 		matchesRule = true
 		for _, r := range rule.Param.([]Rule) {
-			ruleErr := ValidateRule(field, r, resp)
+			ruleErr := ValidateRule(field, r, response)
 			if ruleErr != nil {
 				err = append(err, ruleErr)
 				matchesRule = false
@@ -73,26 +73,26 @@ func ValidateRule(field string, rule Rule, resp string) (err ResponseErrors) {
 			}
 		}
 	case EQ:
-		number, _ := strconv.ParseFloat(resp, 64)
+		number, _ := strconv.ParseFloat(response, 64)
 		matchesRule = number == rule.Param.(float64)
 	case NEQ:
-		number, _ := strconv.ParseFloat(resp, 64)
+		number, _ := strconv.ParseFloat(response, 64)
 		matchesRule = number != rule.Param.(float64)
 	case GT:
-		number, _ := strconv.ParseFloat(resp, 64)
+		number, _ := strconv.ParseFloat(response, 64)
 		matchesRule = number > rule.Param.(float64)
 	case GTE:
-		number, _ := strconv.ParseFloat(resp, 64)
+		number, _ := strconv.ParseFloat(response, 64)
 		matchesRule = number >= rule.Param.(float64)
 	case LT:
-		number, _ := strconv.ParseFloat(resp, 64)
+		number, _ := strconv.ParseFloat(response, 64)
 		matchesRule = number < rule.Param.(float64)
 	case LTE:
-		number, _ := strconv.ParseFloat(resp, 64)
+		number, _ := strconv.ParseFloat(response, 64)
 		matchesRule = number <= rule.Param.(float64)
 	case REGEX:
 		reg := regexp.MustCompile(rule.Param.(string))
-		matchesRule = reg.Match([]byte(resp))
+		matchesRule = reg.Match([]byte(response))
 	}
 	if !matchesRule {
 		err = append(err, errors.New(field+" does not match the assigned rule"))

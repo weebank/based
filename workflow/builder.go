@@ -60,14 +60,14 @@ func (wS *WorkflowService) NewWorkflow(name string) (*WorkflowBuilder, form.Form
 
 // Workflow step
 type WorkflowStep struct {
-	onInteract func(responses form.ResponseCollection) (next string)
+	onInteract func(resps form.ResponseCollection) (next string)
 	onRewind   func() (prev string)
 }
 
 // Add step to build workflow
 func (w WorkflowBuilder) AddStep(
 	name string,
-	onInteract func(responses form.ResponseCollection) (next string),
+	onInteract func(resps form.ResponseCollection) (next string),
 	onRewind func() (prev string),
 ) error {
 	// Check workflow

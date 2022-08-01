@@ -35,16 +35,16 @@ func (wI *WorkflowInstance) Refresh() {
 
 // Get user responses for current step
 func (wI WorkflowInstance) Responses() form.ResponseCollection {
-	if responses, ok := wI.responsesMap[wI.step]; ok {
+	if resps, ok := wI.responsesMap[wI.step]; ok {
 		return nil
 	} else {
-		publicResponses := make(form.ResponseCollection)
-		for name, response := range responses {
+		publicResps := make(form.ResponseCollection)
+		for name, response := range resps {
 			if !wI.consumer.service.workflows[wI.workflow].form.Steps[wI.step][name].Sensitive {
-				publicResponses[name] = response
+				publicResps[name] = response
 			}
 		}
-		return publicResponses
+		return publicResps
 	}
 }
 
